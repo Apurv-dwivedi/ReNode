@@ -18,7 +18,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/companies")
-@CrossOrigin(origins = "*") // Frontend ko allow karne ke liye
+// YAHAN CORS POLICY UPDATE KI HAI TAHO KI 'DELETE' ALLOW HO JAYE
+@CrossOrigin(origins = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class CompanyController {
 
     @Autowired
@@ -120,5 +121,16 @@ public class CompanyController {
         stats.put("totalWasteTons", totalWasteTons);
 
         return stats;
+    }
+
+    // --- YEH NAYA DELETE API METHOD ADD KIYA HAI ---
+    @DeleteMapping("/{companyId}/resources/{resourceId}")
+    public ResponseEntity<?> deleteResource(@PathVariable Integer companyId, @PathVariable Integer resourceId) {
+        try {
+            resourceListingRepository.deleteById(resourceId);
+            return ResponseEntity.ok().body("{\"message\": \"Resource deleted successfully\"}");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("{\"error\": \"Could not delete resource\"}");
+        }
     }
 }

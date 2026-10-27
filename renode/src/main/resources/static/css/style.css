@@ -138,3 +138,62 @@ input[type="range"] {
 .leaflet-container a.leaflet-popup-close-button {
     color: #94a3b8 !important;
 }
+
+/* --- SESSION BADGE FIX --- */
+#activeCompanyName {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    color: #38bdf8 !important;
+    font-size: 18px !important;
+    font-weight: 800 !important;
+}
+
+/* --- MOBILE RESPONSIVENESS FOR MAP (index.html) --- */
+.map-hamburger {
+    display: none;
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 9999;
+    background: #111827;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #f8fafc;
+    cursor: pointer;
+    font-size: 24px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+@media (max-width: 768px) {
+    #sidebar {
+        position: fixed;
+        left: -340px;
+        top: 0;
+        bottom: 0;
+        width: 300px;
+        z-index: 10000;
+        transition: left 0.3s ease;
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+    }
+    #sidebar.open { left: 0; }
+    .map-hamburger { display: block; }
+
+    .top-analytics-bar {
+        flex-direction: column !important;
+        gap: 10px !important;
+        padding: 15px 20px !important;
+        top: 70px !important;
+        right: 15px !important;
+        left: auto !important;
+        transform: none !important;
+        border-radius: 12px !important;
+        width: auto !important;
+        align-items: flex-end !important;
+    }
+    .top-analytics-bar .divider { display: none; }
+    .top-analytics-bar > div { text-align: right !important; }
+}

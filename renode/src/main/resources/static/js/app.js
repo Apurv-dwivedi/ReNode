@@ -1,5 +1,9 @@
 // 1. Initialize Map
-const map = L.map('map').setView([29.8688, 77.8880], 9);
+// NAYA: Default zoom control band kiya taaki usko bottom-right me shift kar sakein
+const map = L.map('map', { zoomControl: false }).setView([29.8688, 77.8880], 9);
+
+// NAYA: Zoom control ko bottom-right par set kiya (Mobile UI overlap rokne ke liye)
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap',
@@ -14,7 +18,7 @@ let markersGroup = L.layerGroup().addTo(map);
 let matchLinesGroup = L.layerGroup().addTo(map);
 let radiusCircle = null;
 
-// 🌟 IMPORTANT: LocalStorage se Active Company ID uthao
+// LocalStorage se Active Company ID uthao
 let MY_COMPANY_ID = localStorage.getItem('companyId') ? parseInt(localStorage.getItem('companyId')) : null;
 const myLat = 29.8688;
 const myLon = 77.8880;
@@ -74,7 +78,7 @@ async function updateUI(companies, matches, radiusInKm) {
     }).addTo(map);
 
     if (matches.length > 0) {
-        let matchHTML = `<h4 style="color: #f59e0b; margin-top: 0; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">🔥 Perfect Matches (${matches.length})</h4>`;
+        let matchHTML = `<h4 style="color: #f59e0b; margin-top: 0; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">⚡ Perfect Matches (${matches.length})</h4>`;
         matches.forEach(match => {
             matchHTML += `
                 <div style="background: rgba(245, 158, 11, 0.15); border-left: 4px solid #f59e0b; padding: 12px; margin-bottom: 15px; border-radius: 5px;">
@@ -184,6 +188,12 @@ loadPlatformStats();
 let tempMarker = null;
 
 map.on('click', function(e) {
+    // NAYA: Mobile par map pe tap karte hi sidebar automatically close ho jayega
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && sidebar.classList.contains('open')) {
+        sidebar.classList.remove('open');
+    }
+
     const lat = e.latlng.lat.toFixed(4);
     const lon = e.latlng.lng.toFixed(4);
 
@@ -206,34 +216,37 @@ window.openRegisterModal = function(lat, lon) {
 };
 
 // --- SUBMIT REGISTRATION FORM & REDIRECT TO LOGIN ---
-document.getElementById('registerFactoryForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+const registerForm = document.getElementById('registerFactoryForm');
+if(registerForm) {
+    registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-    const payload = {
-        companyName: document.getElementById('regName').value,
-        industryType: document.getElementById('regIndustry').value,
-        contactEmail: document.getElementById('regEmail').value,
-        password: document.getElementById('regPassword').value,
-        latitude: document.getElementById('regLat').value,
-        longitude: document.getElementById('regLon').value
-    };
+        const payload = {
+            companyName: document.getElementById('regName').value,
+            industryType: document.getElementById('regIndustry').value,
+            contactEmail: document.getElementById('regEmail').value,
+            password: document.getElementById('regPassword').value,
+            latitude: document.getElementById('regLat').value,
+            longitude: document.getElementById('regLon').value
+        };
 
-    try {
-        const response = await fetch('http://localhost:8080/api/companies/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        try {
+            const response = await fetch('http://localhost:8080/api/companies/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        if (response.ok) {
-            document.getElementById('registerModal').style.display = 'none';
-            document.getElementById('registerFactoryForm').reset();
+            if (response.ok) {
+                document.getElementById('registerModal').style.display = 'none';
+                document.getElementById('registerFactoryForm').reset();
 
-            // Redirect automatically to login after registration
-            alert("Factory Registered Successfully! Please login to access your dashboard.");
-            window.location.href = 'login.html';
+                // Redirect automatically to login after registration
+                alert("Factory Registered Successfully! Please login to access your dashboard.");
+                window.location.href = 'login.html';
+            }
+        } catch (error) {
+            console.error("Error registering factory:", error);
         }
-    } catch (error) {
-        console.error("Error registering factory:", error);
-    }
-});
+    });
+}
