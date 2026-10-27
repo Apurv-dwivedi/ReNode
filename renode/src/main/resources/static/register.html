@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReNode | Register Factory</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: #0b0f19; color: #f1f5f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .auth-container { background-color: #111827; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 40px; width: 100%; max-width: 450px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+        .auth-header { text-align: center; margin-bottom: 30px; }
+        .auth-header h1 { font-size: 26px; font-weight: 700; color: #f8fafc; margin-bottom: 8px; letter-spacing: -0.5px; }
+        .auth-header p { font-size: 14px; color: #94a3b8; }
+        .input-group { margin-bottom: 15px; position: relative; }
+        .input-group label { font-size: 13px; font-weight: 500; color: #cbd5e1; display: block; margin-bottom: 6px; }
+        .input-group input { width: 100%; padding: 10px 14px; background-color: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 14px; transition: 0.2s; }
+        .input-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+
+        /* 🌟 NEW: Autocomplete Dropdown Styles */
+        .suggestions-box { position: absolute; top: 100%; left: 0; right: 0; background: #1e293b; border: 1px solid #334155; border-radius: 8px; margin-top: 5px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .suggestion-item { padding: 10px 14px; font-size: 13px; color: #cbd5e1; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 8px; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background: rgba(56, 189, 248, 0.1); color: #38bdf8; }
+        .suggestion-item i { color: #94a3b8; }
+
+        .btn-primary { width: 100%; background-color: #38bdf8; color: #0f172a; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.2s; margin-top: 10px; display: flex; justify-content: center; gap: 8px; }
+        .btn-primary:hover { background-color: #7dd3fc; }
+        .btn-primary:disabled { background-color: #334155; color: #94a3b8; cursor: not-allowed; }
+        .toggle-link { text-align: center; margin-top: 20px; font-size: 13px; color: #94a3b8; }
+        .toggle-link a { color: #38bdf8; text-decoration: none; font-weight: 500; }
+        .toggle-link a:hover { text-decoration: underline; }
+
+        #toast { position: fixed; bottom: -60px; right: 20px; background: #1e293b; color: white; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); transition: bottom 0.4s ease; border-left: 4px solid transparent; z-index: 2000; }
+        #toast.show { bottom: 20px; }
+        #toast.error { border-left-color: #ef4444; }
+        #toast.success { border-left-color: #10b981; }
+    </style>
+</head>
+<body>
+
+<div class="auth-container">
+    <div class="auth-header">
+        <h1>Join ReNode</h1>
+        <p>Register your factory on the network</p>
+    </div>
+
+    <form id="registerForm">
+        <div class="input-group">
+            <label>Company Name</label>
+            <input type="text" id="regName" placeholder="e.g. Tata Steel" required>
+        </div>
+        <div class="input-group">
+            <label>Industry Type</label>
+            <input type="text" id="regIndustry" placeholder="e.g. Metallurgy" required>
+        </div>
+        <div class="input-group">
+            <label>Contact Email</label>
+            <input type="email" id="regEmail" placeholder="contact@company.com" required>
+        </div>
+        <div class="input-group">
+            <label>Set Password</label>
+            <input type="password" id="regPassword" placeholder="••••••••" required>
+        </div>
+
+        <!-- Smart Location Input with Dropdown -->
+        <div class="input-group">
+            <label>Factory Location</label>
+            <input type="text" id="regLocation" placeholder="Start typing your city..." autocomplete="off" required>
+            <div class="suggestions-box" id="suggestionsBox"></div>
+            <small style="color: #64748b; font-size: 11px; margin-top: 4px; display: block;">Select a location from the dropdown suggestions.</small>
+        </div>
+
+        <!-- Hidden inputs to store exact coordinates -->
+        <input type="hidden" id="finalLat" value="">
+        <input type="hidden" id="finalLon" value="">
+
+        <button type="submit" class="btn-primary" id="regBtn">Create Account</button>
+    </form>
+
+    <div class="toggle-link">
+        Already registered? <a href="login.html">Sign In here</a>
+    </div>
+</div>
+
+<div id="toast"><span id="toast-msg">Notification</span></div>
+
+<script>
+    function showToast(message, type) {
+        const toast = document.getElementById('toast');
+        document.getElementById('toast-msg').innerText = message;
+        toast.className = ''; toast.classList.add('show', type);
+        setTimeout(() => { toast.classList.remove('show'); }, 4000);
+    }
+
+    // 🌟 LIVE GOOGLE-MAPS STYLE AUTOCOMPLETE LOGIC
+    const locationInput = document.getElementById('regLocation');
+    const suggestionsBox = document.getElementById('suggestionsBox');
+    let typingTimer;
+
+    locationInput.addEventListener('input', function() {
+        clearTimeout(typingTimer);
+        const query = this.value.trim();
+
+        // Agar input khali hai, box chupa do
+        if(query.length < 3) {
+            suggestionsBox.style.display = 'none';
+            return;
+        }
+
+        // User ke type karna band karne ke 500ms baad API call karo
+        typingTimer = setTimeout(async () => {
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+                const data = await response.json();
+
+                suggestionsBox.innerHTML = '';
+                if(data.length > 0) {
+                    data.forEach(place => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion-item';
+                        // Simplify the display name (first 2-3 commas max)
+                        const simpleName = place.display_name.split(',').slice(0, 3).join(',');
+                        div.innerHTML = `<i class="ph ph-map-pin"></i> ${simpleName}`;
+
+                        // Jab user suggestion par click kare
+                        div.onclick = function() {
+                            locationInput.value = simpleName;
+                            document.getElementById('finalLat').value = place.lat;
+                            document.getElementById('finalLon').value = place.lon;
+                            suggestionsBox.style.display = 'none';
+                        };
+                        suggestionsBox.appendChild(div);
+                    });
+                    suggestionsBox.style.display = 'block';
+                } else {
+                    suggestionsBox.innerHTML = '<div class="suggestion-item" style="color: #ef4444;">No results found. Try another spelling.</div>';
+                    suggestionsBox.style.display = 'block';
+                }
+            } catch (err) {
+                console.error("Autocomplete error:", err);
+            }
+        }, 500);
+    });
+
+    // Click outside to close suggestions
+    document.addEventListener('click', function(e) {
+        if(e.target !== locationInput && e.target !== suggestionsBox) {
+            suggestionsBox.style.display = 'none';
+        }
+    });
+
+    // 🌟 SUBMIT LOGIC
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        let lat = document.getElementById('finalLat').value;
+        let lon = document.getElementById('finalLon').value;
+
+        // Agar user ne bina suggestion select kiye form submit kar diya
+        if (!lat || !lon) {
+            showToast("Please select a valid location from the dropdown suggestions!", "error");
+            return;
+        }
+
+        const btn = document.getElementById('regBtn');
+        btn.disabled = true;
+        btn.innerText = 'Creating Account...';
+
+        try {
+            const payload = {
+                companyName: document.getElementById('regName').value,
+                industryType: document.getElementById('regIndustry').value,
+                contactEmail: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value,
+                latitude: lat,
+                longitude: lon
+            };
+
+            const response = await fetch('http://localhost:8080/api/companies/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                showToast("Registration Successful! Redirecting to login...", "success");
+                setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+            } else {
+                const errText = await response.text();
+                showToast("Registration failed: " + errText, "error");
+                btn.disabled = false;
+                btn.innerText = 'Create Account';
+            }
+        } catch (error) {
+            console.error(error);
+            showToast("Server error. Check if backend is running.", "error");
+            btn.disabled = false;
+            btn.innerText = 'Create Account';
+        }
+    });
+</script>
+</body>
+</html>

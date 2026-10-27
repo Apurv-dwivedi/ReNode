@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReNode | Secure Login</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .auth-container {
+            background-color: #111827;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .auth-header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .auth-header p {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .input-group label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #cbd5e1;
+        }
+
+        .forgot-link {
+            font-size: 12px;
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .forgot-link:hover {
+            text-decoration: underline;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 40px 12px 14px;
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            cursor: pointer;
+            font-size: 14px;
+            user-select: none;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background-color: #f8fafc;
+            color: #0f172a;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            background-color: #e2e8f0;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .toggle-link {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .toggle-link a {
+            color: #38bdf8;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: -60px;
+            right: 20px;
+            background: #1e293b;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            transition: bottom 0.4s ease;
+            border-left: 4px solid transparent;
+            z-index: 2000;
+        }
+
+        #toast.show { bottom: 20px; }
+        #toast.error { border-left-color: #ef4444; }
+        #toast.success { border-left-color: #10b981; }
+        #toast.info { border-left-color: #3b82f6; }
+    </style>
+</head>
+<body>
+
+<div class="auth-container">
+    <div class="auth-header">
+        <h1>Welcome back</h1>
+        <p>Enter your details to access your dashboard</p>
+    </div>
+
+    <form id="loginForm">
+        <div class="input-group">
+            <div class="label-row">
+                <label for="email">Company Email</label>
+            </div>
+            <input type="email" id="email" placeholder="contact@company.com" required>
+        </div>
+
+        <div class="input-group">
+            <div class="label-row">
+                <label for="password">Password</label>
+                <a href="#" class="forgot-link" onclick="handleForgot()">Forgot password?</a>
+            </div>
+            <div class="input-wrapper">
+                <input type="password" id="password" placeholder="••••••••" required>
+                <span class="toggle-password" id="togglePassword">Show</span>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-primary" id="loginBtn">
+            Sign In
+        </button>
+    </form>
+
+    <div class="toggle-link">
+        Don't have an account? <a href="register.html">Register Factory</a>
+    </div>
+</div>
+
+<div id="toast">
+    <span id="toast-msg">Notification message</span>
+</div>
+
+<script>
+    // Password Visibility Toggle Logic
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+
+    togglePassword.addEventListener('click', function () {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        this.textContent = type === 'password' ? 'Show' : 'Hide';
+    });
+
+    // Toast Notification Logic
+    function showToast(message, type) {
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toast-msg');
+
+        toastMsg.innerText = message;
+        toast.className = '';
+        toast.classList.add('show', type);
+
+        setTimeout(() => { toast.classList.remove('show'); }, 3500);
+    }
+
+    function handleForgot() {
+        const emailVal = document.getElementById('email').value;
+        if(!emailVal) {
+            showToast("Please enter your email first to reset password.", "error");
+        } else {
+            showToast(`Password reset link sent to ${emailVal}!`, "info");
+        }
+    }
+
+    // Login Logic
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const btn = document.getElementById('loginBtn');
+        const originalBtnText = btn.innerText;
+
+        btn.disabled = true;
+        btn.innerText = 'Signing in...';
+
+        const credentials = {
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+        };
+
+        try {
+            const response = await fetch('http://localhost:8080/api/companies/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(credentials)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+
+                localStorage.setItem('companyId', data.companyId);
+                localStorage.setItem('companyName', data.companyName);
+
+                showToast("Login Successful! Redirecting...", "success");
+
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 1000);
+            } else {
+                const errText = await response.text();
+                showToast("Login Failed: " + errText, "error");
+                btn.disabled = false;
+                btn.innerText = originalBtnText;
+            }
+        } catch (error) {
+            console.error("Login error:", error);
+            showToast("Server connection error. Is backend running?", "error");
+            btn.disabled = false;
+            btn.innerText = originalBtnText;
+        }
+    });
+</script>
+</body>
+</html>
