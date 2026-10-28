@@ -9,18 +9,19 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CompanyRepository extends JpaRepository<Company, Integer> {
+
+    // Sirf yeh ek method rakha hai jo Optional return karega (Security aur Login ke liye best hai)
+    Optional<Company> findByContactEmail(String contactEmail);
 
     // 1. Map ke aas-paas ki factories dhoondhne ke liye
     @Query(value = "SELECT * FROM companies WHERE ST_Distance_Sphere(location, ST_GeomFromText(CONCAT('POINT(', :lat, ' ', :lon, ')'), 4326)) <= (:radius * 1000)", nativeQuery = true)
     List<Company> findNearbyFactories(@Param("lon") double lon, @Param("lat") double lat, @Param("radius") double radius);
 
-    // 2. Email se company fetch karne ke liye (Login ke liye zaroori hai)
-    Company findByContactEmail(String contactEmail);
-
-    // 3. Password ke sath nayi factory register karne ke liye
+    // 2. Password ke sath nayi factory register karne ke liye
     @Modifying
     @Transactional
     @Query(value = "INSERT INTO companies (company_name, industry_type, contact_email, password, location) VALUES (:name, :industry, :email, :password, ST_GeomFromText(CONCAT('POINT(', :lat, ' ', :lon, ')'), 4326))", nativeQuery = true)

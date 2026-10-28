@@ -272,14 +272,18 @@
             if (response.ok) {
                 const data = await response.json();
 
-                localStorage.setItem('companyId', data.companyId);
-                localStorage.setItem('companyName', data.companyName);
+                // Backend se mila hua JWT token aur data save kar lo
+                localStorage.setItem("companyId", data.companyId);
+                localStorage.setItem("companyName", data.companyName);
+                localStorage.setItem("jwt_token", data.token);
 
+                // Syntax error theek kiya: Smooth toast dikhao aur fir redirect karo
                 showToast("Login Successful! Redirecting...", "success");
 
                 setTimeout(() => {
-                    window.location.href = 'dashboard.html';
+                    window.location.href = "dashboard.html";
                 }, 1000);
+
             } else {
                 const errText = await response.text();
                 showToast("Login Failed: " + errText, "error");

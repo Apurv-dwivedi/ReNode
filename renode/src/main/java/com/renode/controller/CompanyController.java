@@ -6,6 +6,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.renode.entity.Company;
 import com.renode.entity.ResourceListing;
+import com.renode.security.JwtUtil;
+import org.springframework.security.core.userdetails.UserDetails;
+import com.renode.security.CustomUserDetailsService;
 import com.renode.dto.MatchResponse;
 import com.renode.service.CompanyService;
 import com.renode.service.MatchmakingService;
@@ -24,6 +27,12 @@ public class CompanyController {
 
     @Autowired
     private CompanyRepository companyRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private CustomUserDetailsService customUserDetailsService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -85,17 +94,25 @@ public class CompanyController {
         String email = credentials.get("email");
         String password = credentials.get("password");
 
-        Company company = companyRepository.findByContactEmail(email);
+        Company company = companyRepository.findByContactEmail(email).orElse(null);
         if (company == null) {
             return ResponseEntity.status(401).body("Company not found with this email!");
         }
 
         // Password match check karna
         if (passwordEncoder.matches(password, company.getPassword())) {
+
+            // 1. JWT Token Generate Karo
+            UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+            String token = jwtUtil.generateToken(userDetails.getUsername());
+
+            // 2. Token ko response me add karo
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Login Successful!");
             response.put("companyId", company.getId());
             response.put("companyName", company.getCompanyName());
+            response.put("token", token); // <-- YEH NAYA ADD KIYA HAI
+
             return ResponseEntity.ok(response);
         } else {
             return ResponseEntity.status(401).body("Invalid Password!");

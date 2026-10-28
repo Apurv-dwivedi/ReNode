@@ -8,9 +8,9 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap',
     maxZoom: 19,
-    updateWhenIdle: true,      // Drag karne ke beech me naye tiles load nahi karega, rukne par karega
-    updateWhenZooming: false,  // Zoom animation ke dauran extra request bhej kar browser ko hang nahi karega
-    keepBuffer: 1       // Screen ke bahar ke tiles ko pehle se memory me save rakhega
+    updateWhenIdle: true,
+    updateWhenZooming: false,
+    keepBuffer: 1
 }).addTo(map);
 
 // Map Layers
@@ -18,8 +18,9 @@ let markersGroup = L.layerGroup().addTo(map);
 let matchLinesGroup = L.layerGroup().addTo(map);
 let radiusCircle = null;
 
-// LocalStorage se Active Company ID uthao
+// LocalStorage se Active Company ID aur JWT Token uthao
 let MY_COMPANY_ID = localStorage.getItem('companyId') ? parseInt(localStorage.getItem('companyId')) : null;
+let JWT_TOKEN = localStorage.getItem('jwt_token');
 const myLat = 29.8688;
 const myLon = 77.8880;
 
@@ -43,28 +44,40 @@ const centerIcon = L.divIcon({
 
 L.marker([myLat, myLon], { icon: centerIcon }).addTo(map).bindPopup("<b>Your Active Location</b>").openPopup();
 
-// 2. Fetch Data (Nearby + Matches)
+// 2. Fetch Data (Nearby + Matches) - Updated with Auth Headers
 async function fetchData(radius) {
-    if (!MY_COMPANY_ID) {
-        document.getElementById('results').innerHTML = `<p style="color: #94a3b8; font-style: italic;">Please login to view network matches.</p>`;
-        return; // Agar ID nahi hai toh fetch mat karo
+    // Agar companyId ya token nahi hai, toh API call mat karo
+    if (!MY_COMPANY_ID || !JWT_TOKEN) {
+        document.getElementById('results').innerHTML = `<p style="color: #94a3b8; font-style: italic; padding: 10px;">Please login to view network matches.</p>`;
+        return;
     }
 
     try {
-        const nearbyRes = await fetch(`http://localhost:8080/api/companies/${MY_COMPANY_ID}/nearby?radius=${radius}`);
-        const nearbyData = await nearbyRes.json();
+        const nearbyRes = await fetch(`http://localhost:8080/api/companies/${MY_COMPANY_ID}/nearby?radius=${radius}`, {
+            headers: { 'Authorization': `Bearer ${JWT_TOKEN}` }
+        });
 
-        const matchRes = await fetch(`http://localhost:8080/api/companies/${MY_COMPANY_ID}/matches?radius=${radius}`);
+        const matchRes = await fetch(`http://localhost:8080/api/companies/${MY_COMPANY_ID}/matches?radius=${radius}`, {
+            headers: { 'Authorization': `Bearer ${JWT_TOKEN}` }
+        });
+
+        // Agar token expire ho gaya hai (403 Forbidden)
+        if (!nearbyRes.ok || !matchRes.ok) {
+            console.error("Session expired or unauthorized.");
+            document.getElementById('results').innerHTML = `<p style="color: #ef4444; padding: 10px;">Session expired. Please <a href="login.html" style="color: #38bdf8;">Login again</a>.</p>`;
+            return; // Yahin ruk jao, JSON parse mat karo
+        }
+
+        const nearbyData = await nearbyRes.json();
         const matchData = await matchRes.json();
 
         updateUI(nearbyData, matchData, radius);
     } catch (error) {
         console.error("Error fetching data", error);
-        document.getElementById('results').innerHTML = `<p style="color: red;">Cannot connect to backend.</p>`;
     }
 }
 
-// 3. Draw on Map & Update Sidebar
+// 3. Draw on Map & Update Sidebar - Updated with Auth Headers for resources
 async function updateUI(companies, matches, radiusInKm) {
     markersGroup.clearLayers();
     matchLinesGroup.clearLayers();
@@ -119,7 +132,9 @@ async function updateUI(companies, matches, radiusInKm) {
 
         let resourcesHTML = '<div style="margin-top: 10px; font-size: 12px; display: flex; flex-direction: column; gap: 4px;">';
         try {
-            const resResponse = await fetch(`http://localhost:8080/api/companies/${company.id}/resources`);
+            const resResponse = await fetch(`http://localhost:8080/api/companies/${company.id}/resources`, {
+                headers: { 'Authorization': `Bearer ${JWT_TOKEN}` }
+            });
             const resources = await resResponse.json();
             if(resources.length === 0) {
                 resourcesHTML += '<span style="color: #64748b; font-style: italic;">No resources listed.</span>';
@@ -171,12 +186,15 @@ fetchData(85);
 // --- LOAD PLATFORM STATS ---
 async function loadPlatformStats() {
     try {
+        // Ab yeh public API hai, isme token bhejne ki zaroorat nahi
         const response = await fetch('http://localhost:8080/api/companies/stats');
-        const stats = await response.json();
 
-        document.getElementById('stat-factories').innerText = stats.totalFactories;
-        document.getElementById('stat-resources').innerText = stats.totalResources;
-        document.getElementById('stat-waste').innerText = stats.totalWasteTons + 't';
+        if (response.ok) {
+            const stats = await response.json();
+            document.getElementById('stat-factories').innerText = stats.totalFactories;
+            document.getElementById('stat-resources').innerText = stats.totalResources;
+            document.getElementById('stat-waste').innerText = stats.totalWasteTons + 't';
+        }
     } catch (error) {
         console.error("Failed to load stats", error);
     }
@@ -188,7 +206,6 @@ loadPlatformStats();
 let tempMarker = null;
 
 map.on('click', function(e) {
-    // NAYA: Mobile par map pe tap karte hi sidebar automatically close ho jayega
     const sidebar = document.getElementById('sidebar');
     if (sidebar && sidebar.classList.contains('open')) {
         sidebar.classList.remove('open');
@@ -241,7 +258,6 @@ if(registerForm) {
                 document.getElementById('registerModal').style.display = 'none';
                 document.getElementById('registerFactoryForm').reset();
 
-                // Redirect automatically to login after registration
                 alert("Factory Registered Successfully! Please login to access your dashboard.");
                 window.location.href = 'login.html';
             }

@@ -237,8 +237,9 @@
 <script>
     const companyId = localStorage.getItem('companyId');
     const companyName = localStorage.getItem('companyName');
+    const token = localStorage.getItem('jwt_token');
 
-    if (!companyId) {
+    if (!companyId || !token) {
         window.location.href = 'login.html';
     } else {
         document.getElementById('dashCompanyName').innerText = companyName;
@@ -296,7 +297,9 @@
 
     async function fetchMyResources() {
         try {
-            const response = await fetch(`http://localhost:8080/api/companies/${companyId}/resources`);
+            const response = await fetch(`http://localhost:8080/api/companies/${companyId}/resources`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const resources = await response.json();
             updateCharts(resources);
 
@@ -323,7 +326,14 @@
         e.preventDefault();
         const payload = { listingType: document.getElementById('resType').value, category: document.getElementById('resCategory').value, quantityInTons: document.getElementById('resQuantity').value, description: document.getElementById('resDesc').value };
         try {
-            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/resources`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/resources`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
             if (res.ok) { document.getElementById('addResourceModal').style.display = 'none'; document.getElementById('resourceForm').reset(); fetchMyResources(); }
         } catch (error) { console.error(error); }
     });
@@ -331,7 +341,10 @@
     async function deleteResource(id) {
         if(confirm("Delete this listing?")) {
             try {
-                const res = await fetch(`http://localhost:8080/api/companies/${companyId}/resources/${id}`, { method: 'DELETE' });
+                const res = await fetch(`http://localhost:8080/api/companies/${companyId}/resources/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (res.ok) fetchMyResources();
             } catch (error) { console.error(error); }
         }
@@ -346,7 +359,9 @@
         if (container.style.display !== 'none') container.innerHTML = '<div style="color: #38bdf8;">Finding perfect matches...</div>';
 
         try {
-            const response = await fetch(`http://localhost:8080/api/companies/${companyId}/matches?radius=${radius}`);
+            const response = await fetch(`http://localhost:8080/api/companies/${companyId}/matches?radius=${radius}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const matches = await response.json();
 
             // Notification Update
@@ -403,7 +418,9 @@
     }
 
     function logout() {
-        localStorage.removeItem('companyId'); localStorage.removeItem('companyName');
+        localStorage.removeItem('companyId');
+        localStorage.removeItem('companyName');
+        localStorage.removeItem('jwt_token'); // Make sure to clear the token as well
         window.location.href = 'index.html';
     }
 </script>
