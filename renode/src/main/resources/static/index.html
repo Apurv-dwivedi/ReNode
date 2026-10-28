@@ -9,7 +9,7 @@
     <!-- Favicon and Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800&family=Inter:wght@500&display=swap" rel="stylesheet">
 
-    <!-- Phosphor Icons for Hamburger -->
+    <!-- Phosphor Icons for Hamburger & Navigation -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <!-- Leaflet CSS for Map -->
@@ -23,6 +23,21 @@
             background: transparent !important; box-shadow: none !important; border: none !important;
             padding: 0 !important; border-radius: 0 !important; color: #38bdf8 !important;
             font-size: 18px !important; font-weight: 800 !important;
+        }
+
+        /* Glassmorphism and UI Enhancements */
+        #sidebar {
+            background: rgba(17, 24, 39, 0.85) !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .top-analytics-bar {
+            background: rgba(15, 23, 42, 0.65) !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
         }
 
         /* Mobile Responsiveness for Map Page */
@@ -61,7 +76,7 @@
 <div id="sidebar">
 
     <!-- Brand Lockup -->
-    <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 40px; padding: 0;">
+    <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 25px; padding: 0;">
         <img src="images/renode.webp" alt="ReNode Icon" style="height: 56px; width: 56px; object-fit: contain; border-radius: 14px; box-shadow: 0 4px 15px rgba(0, 210, 255, 0.2);">
         <div style="display: flex; flex-direction: column; justify-content: center;">
             <div style="font-family: 'Montserrat', sans-serif; font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 40%, #10b981 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; letter-spacing: -1px;">
@@ -72,6 +87,11 @@
             </div>
         </div>
     </div>
+
+    <!-- Back to Dashboard Button (Hidden by default, shown if logged in) -->
+    <a href="dashboard.html" id="backToDashBtn" style="display: none; text-decoration: none; color: #38bdf8; font-size: 14px; font-weight: 600; margin-bottom: 25px; align-items: center; gap: 8px; background: rgba(56, 189, 248, 0.1); padding: 10px 15px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.2); transition: all 0.2s ease; width: fit-content;">
+        <i class="ph ph-arrow-left" style="font-size: 16px;"></i> Back to Dashboard
+    </a>
 
     <!-- AUTH SECTION -->
     <div style="background: rgba(30, 41, 59, 0.4); padding: 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
@@ -84,11 +104,11 @@
             <div id="statusDot" style="width: 10px; height: 10px; background: #64748b; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
         </div>
 
-        <button onclick="window.location.href='login.html'" style="width: 100%; background: #f8fafc; color: #0f172a; border: none; padding: 12px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; margin-bottom: 12px; transition: 0.2s;">
+        <button id="loginBtn" onclick="window.location.href='login.html'" style="width: 100%; background: #f8fafc; color: #0f172a; border: none; padding: 12px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; margin-bottom: 12px; transition: 0.2s;">
             🔐 Login to Dashboard
         </button>
 
-        <button onclick="window.location.href='register.html'" style="width: 100%; background: transparent; color: #38bdf8; border: 1px dashed #38bdf8; padding: 12px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer;">
+        <button id="registerBtn" onclick="window.location.href='register.html'" style="width: 100%; background: transparent; color: #38bdf8; border: 1px dashed #38bdf8; padding: 12px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer;">
             📍 Register New Factory
         </button>
     </div>
@@ -129,5 +149,32 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <!-- Custom JS -->
 <script src="js/app.js"></script>
+
+<!-- Authentication & UI Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Agar user logged in hai (JWT token hai)
+        if (localStorage.getItem('jwt_token') && localStorage.getItem('companyName')) {
+
+            // 1. Show Back to Dashboard Button
+            document.getElementById('backToDashBtn').style.display = 'flex';
+
+            // 2. Update Current Session Badge
+            document.getElementById('activeCompanyName').innerText = localStorage.getItem('companyName');
+            const statusDot = document.getElementById('statusDot');
+            statusDot.style.background = '#10b981'; // Green color for active
+            statusDot.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.5)';
+
+            // 3. Change Login button text to "Open Dashboard"
+            const loginBtn = document.getElementById('loginBtn');
+            loginBtn.innerHTML = '<i class="ph ph-squares-four"></i> Open Dashboard';
+            loginBtn.style.background = '#38bdf8';
+            loginBtn.style.color = '#0f172a';
+
+            // 4. Hide Register button
+            document.getElementById('registerBtn').style.display = 'none';
+        }
+    });
+</script>
 </body>
 </html>

@@ -1,6 +1,9 @@
 package com.renode.controller;
 
 import com.renode.repository.CompanyRepository;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +24,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/companies")
-// YAHAN CORS POLICY UPDATE KI HAI TAHO KI 'DELETE' ALLOW HO JAYE
 @CrossOrigin(origins = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class CompanyController {
 
@@ -70,24 +72,56 @@ public class CompanyController {
         return resourceListingRepository.save(newResource);
     }
 
-    // --- SECURE REGISTER ENDPOINT (With Password) ---
+    // --- REGISTER NEW FACTORY ---
     @PostMapping("/register")
-    public String registerNewFactory(@RequestBody Map<String, String> payload) {
-        String name = payload.get("companyName");
-        String industry = payload.get("industryType");
-        String email = payload.get("contactEmail");
-        String rawPassword = payload.get("password");
-        double lat = Double.parseDouble(payload.get("latitude"));
-        double lon = Double.parseDouble(payload.get("longitude"));
+    public ResponseEntity<?> registerFactory(@RequestBody Map<String, Object> payload) {
+        try {
+            Company company = new Company();
 
-        // Password ko secure hash me convert karna
-        String encodedPassword = passwordEncoder.encode(rawPassword);
+            // Safe parsing: Null check lagaya hai taaki crash na ho
+            if (payload.get("companyName") != null) {
+                company.setCompanyName(String.valueOf(payload.get("companyName")));
+            }
+            if (payload.get("industryType") != null) {
+                company.setIndustryType(String.valueOf(payload.get("industryType")));
+            }
+            if (payload.get("contactEmail") != null) {
+                company.setContactEmail(String.valueOf(payload.get("contactEmail")));
+            }
+            if (payload.get("password") != null) {
+                company.setPassword(passwordEncoder.encode(String.valueOf(payload.get("password"))));
+            }
 
-        // Database me password ke sath insert call karna
-        companyRepository.insertCompanyWithPassword(name, industry, email, encodedPassword, lat, lon);
-        return "Factory Registered Successfully!";
+            // Location ki safe parsing
+            if (payload.get("latitude") != null && payload.get("longitude") != null) {
+                double lat = Double.parseDouble(String.valueOf(payload.get("latitude")));
+                double lon = Double.parseDouble(String.valueOf(payload.get("longitude")));
+
+                org.locationtech.jts.geom.GeometryFactory geometryFactory = new org.locationtech.jts.geom.GeometryFactory();
+                org.locationtech.jts.geom.Point location = geometryFactory.createPoint(new org.locationtech.jts.geom.Coordinate(lon, lat));
+                location.setSRID(4326);
+                company.setLocation(location);
+            }
+
+            companyRepository.save(company);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Factory Registered Successfully!");
+            return ResponseEntity.ok(response);
+
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Agar email pehle se exist karta hai, toh yeh clear error dega
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Email already exists! Please use a different email or login.");
+            return ResponseEntity.status(400).body(error);
+        } catch (Exception e) {
+            // Backend console me exact error line print karega
+            e.printStackTrace();
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Server Error: " + e.getMessage());
+            return ResponseEntity.status(400).body(error);
+        }
     }
-
     // --- LOGIN ENDPOINT ---
     @PostMapping("/login")
     public ResponseEntity<?> loginFactory(@RequestBody Map<String, String> credentials) {
@@ -102,11 +136,9 @@ public class CompanyController {
         // Password match check karna
         if (passwordEncoder.matches(password, company.getPassword())) {
 
-            // 1. JWT Token Generate Karo
             UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
             String token = jwtUtil.generateToken(userDetails.getUsername());
 
-            // 2. Token ko response me add karo
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Login Successful!");
             response.put("companyId", company.getId());
@@ -140,7 +172,6 @@ public class CompanyController {
         return stats;
     }
 
-    // --- YEH NAYA DELETE API METHOD ADD KIYA HAI ---
     @DeleteMapping("/{companyId}/resources/{resourceId}")
     public ResponseEntity<?> deleteResource(@PathVariable Integer companyId, @PathVariable Integer resourceId) {
         try {
@@ -149,5 +180,36 @@ public class CompanyController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("{\"error\": \"Could not delete resource\"}");
         }
+    }
+    // --- UPDATE COMPANY PROFILE ---
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateCompanyProfile(@PathVariable Integer id, @RequestBody Map<String, String> updates) {
+        Company company = companyRepository.findById(id).orElse(null);
+        if (company == null) {
+            return ResponseEntity.status(404).body("Company not found!");
+        }
+
+        if (updates.containsKey("companyName")) {
+            company.setCompanyName(updates.get("companyName"));
+        }
+        if (updates.containsKey("industryType")) {
+            company.setIndustryType(updates.get("industryType"));
+        }
+        if (updates.containsKey("latitude") && updates.containsKey("longitude")) {
+            double lat = Double.parseDouble(updates.get("latitude"));
+            double lon = Double.parseDouble(updates.get("longitude"));
+
+            GeometryFactory geometryFactory = new GeometryFactory();
+            Point newLocation = geometryFactory.createPoint(new Coordinate(lon, lat));
+            newLocation.setSRID(4326);
+
+            company.setLocation(newLocation);
+        }
+
+        companyRepository.save(company);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Profile updated successfully!");
+        return ResponseEntity.ok(response);
     }
 }
