@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -44,9 +45,7 @@ public class DashboardController {
             long totalReq = 0;
 
             for (ResourceListing listing : allListings) {
-                // Check kar rahe hain ki kya yeh listing current logged-in company ki hai
                 if (listing.getCompany() != null && listing.getCompany().getId().equals(companyId)) {
-
                     String type = String.valueOf(listing.getListingType()).toUpperCase();
                     if (type.contains("WASTE")) {
                         totalWaste++;
@@ -58,6 +57,27 @@ public class DashboardController {
 
             stats.put("totalWasteListed", totalWaste);
             stats.put("activeRequirements", totalReq);
+
+            // NEW: Sustainability Impact & Recent Activity Calculation
+            List<com.renode.entity.ResourceRequest> allIncoming = requestRepository.findByReceiverIdOrderByCreatedAtDesc(companyId);
+
+            double totalReusedTons = 0;
+            int completedTransactions = 0;
+
+            for(com.renode.entity.ResourceRequest req : allIncoming) {
+                if(req.getStatus() == RequestStatus.COMPLETED) {
+                    totalReusedTons += req.getRequestedQuantity();
+                    completedTransactions++;
+                }
+            }
+
+            stats.put("sustainabilityTons", totalReusedTons);
+            stats.put("sustainabilityCO2", totalReusedTons * 1.5); // CO2 formula
+            stats.put("completedTransactions", completedTransactions);
+
+            // Recent Activity Preview (Top 3 requests)
+            List<com.renode.entity.ResourceRequest> recentActivity = allIncoming.stream().limit(3).collect(Collectors.toList());
+            stats.put("recentActivity", recentActivity);
 
             return ResponseEntity.ok(stats);
 

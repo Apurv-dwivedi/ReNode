@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "resource_listings")
@@ -33,4 +34,13 @@ public class ResourceListing {
 
     @Column(name = "description", length = 500)
     private String description;
+
+    @Column(name = "target_price")
+    private Double targetPrice;
+
+    @Column(name = "purity_specifications")
+    private String puritySpecifications;
+
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
 }

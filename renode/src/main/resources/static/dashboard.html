@@ -3,349 +3,618 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ReNode | Dashboard</title>
+    <title>ReNode | Workspace</title>
 
-    <!-- Favicon and Google Fonts -->
     <link rel="icon" type="image/webp" href="images/renode.webp">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800&family=Inter:wght@500&display=swap" rel="stylesheet">
-
-    <!-- Icons, Charts, and PDF Export Libraries -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+    <!-- Leaflet Map CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        body { background-color: #0b0f19; color: #f1f5f9; display: flex; min-height: 100vh; overflow-x: hidden; }
-
-        /* Sidebar */
-        .sidebar { width: 260px; background-color: #111827; border-right: 1px solid rgba(255,255,255,0.08); padding: 25px 20px; display: flex; flex-direction: column; z-index: 9999; transition: left 0.3s ease; }
-
-        .nav-item { padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; color: #94a3b8; transition: 0.2s; border: 1px solid transparent; }
-        .nav-item:hover { background: rgba(255,255,255,0.05); color: #f1f5f9; }
-        .nav-item.active { background: rgba(56, 189, 248, 0.1); color: #38bdf8; border-color: rgba(56, 189, 248, 0.2); }
-        .nav-item i { font-size: 18px; }
-
-        .logout-btn { margin-top: auto; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
-        .logout-btn:hover { background: #ef4444; color: white; }
-
-        /* Main Content */
-        .main-content { flex: 1; padding: 40px; overflow-y: auto; width: 100%; min-width: 0; overflow-x: hidden; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
-        .header h2 { font-size: 24px; font-weight: 700; color: #f8fafc; }
-        .user-badge { display: flex; align-items: center; gap: 10px; background: #1e293b; padding: 8px 16px; border-radius: 20px; border: 1px solid #334155; font-size: 14px; font-weight: 600; color: #38bdf8; }
-
-        /* Mobile Hamburger & Sidebar */
-        .hamburger { display: none; font-size: 28px; cursor: pointer; color: #f8fafc; }
-        @media (max-width: 768px) {
-            .sidebar { position: fixed; left: -260px; top: 0; bottom: 0; }
-            .sidebar.open { left: 0; }
-            .main-content { padding: 20px; }
-            .hamburger { display: block; }
-            .analytics-grid { grid-template-columns: 1fr !important; }
-            .user-badge span { display: none; }
+        :root {
+            --bg-main: #070b14;
+            --bg-card: rgba(17, 24, 39, 0.65);
+            --border-light: rgba(255, 255, 255, 0.08);
+            --accent-cyan: #38bdf8;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --glass-blur: blur(12px);
         }
 
-        /* Notifications */
-        .notification-wrapper { position: relative; display: inline-block; margin-right: 15px; }
-        .bell-icon { font-size: 24px; color: #94a3b8; cursor: pointer; transition: 0.2s; }
-        .bell-icon:hover { color: #f8fafc; }
-        .badge { position: absolute; top: -4px; right: -4px; background: #ef4444; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; display: flex; justify-content: center; align-items: center; font-weight: bold; }
-        .notif-dropdown { display: none; position: absolute; right: 0; top: 35px; width: 280px; background: rgba(17, 24, 39, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1000; padding: 15px; }
-        .notif-dropdown.show { display: block; }
-        .notif-item { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; color: #cbd5e1; }
-        .notif-item:last-child { border-bottom: none; }
-        .notif-item strong { color: #38bdf8; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
 
-        /* Action Bar */
-        .action-bar { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
-        .btn { padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
-        .btn-primary { background: #10b981; color: white; }
-        .btn-primary:hover { background: #059669; }
-        .btn-secondary { background: #38bdf8; color: #0f172a; }
-        .btn-secondary:hover { background: #0284c7; color: white; }
-        .btn-pdf { background: #ef4444; color: white; }
-        .btn-pdf:hover { background: #dc2626; }
+        /* Responsive Sidebar */
+        .sidebar { width: 260px; background-color: rgba(11, 15, 25, 0.95); backdrop-filter: var(--glass-blur); border-right: 1px solid var(--border-light); padding: 25px 20px; display: flex; flex-direction: column; z-index: 1000; transition: transform 0.3s ease; }
+        .nav-item { padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 500; color: var(--text-muted); transition: all 0.2s; border: 1px solid transparent; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-main); }
+        .nav-item.active { background: rgba(56, 189, 248, 0.1); color: var(--accent-cyan); border-color: rgba(56, 189, 248, 0.2); box-shadow: 0 0 15px rgba(56, 189, 248, 0.1); }
+        .nav-item i { font-size: 18px; }
+        .logout-btn { margin-top: auto; background: rgba(239, 68, 68, 0.1); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.2); }
+        .logout-btn:hover { background: var(--accent-red); color: white; box-shadow: 0 0 15px rgba(239, 68, 68, 0.3); }
 
+        /* Main Content Area */
+        .main-content { flex: 1; padding: 30px 40px; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; }
+
+        /* Sticky Header */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; position: sticky; top: -30px; background: rgba(7, 11, 20, 0.8); backdrop-filter: var(--glass-blur); padding: 20px 0; z-index: 100; border-bottom: 1px solid transparent; transition: border 0.3s; }
+        .header.scrolled { border-bottom: 1px solid var(--border-light); }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .mobile-toggle { display: none; font-size: 24px; color: var(--text-main); cursor: pointer; }
+
+        .user-badge { display: flex; align-items: center; gap: 8px; background: rgba(30, 41, 59, 0.7); padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(51, 65, 85, 0.7); font-size: 13px; font-weight: 600; color: var(--accent-cyan); }
+
+        /* Action Buttons */
+        .btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+        .btn-primary { background: var(--accent-green); color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2); }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3); }
+        .btn-secondary { background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); border: 1px solid rgba(56, 189, 248, 0.3); }
+        .btn-secondary:hover { background: rgba(56, 189, 248, 0.25); }
+        .btn-outline { background: transparent; color: var(--text-main); border: 1px solid var(--border-light); }
+        .btn-outline:hover { background: rgba(255,255,255,0.05); }
         .btn-sm { padding: 6px 12px; font-size: 11px; border-radius: 6px; }
-        .btn-success { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
-        .btn-success:hover { background: #10b981; color: white; }
-        .btn-danger { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
-        .btn-danger:hover { background: #ef4444; color: white; }
 
-        /* Table & Analytics */
-        .table-container { background: #111827; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 40px; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; text-align: left; min-width: 600px; }
-        th { background: rgba(255,255,255,0.02); padding: 15px 20px; font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        td { padding: 15px 20px; font-size: 14px; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        /* Glassmorphic Cards */
+        .glass-card { background: var(--bg-card); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-light); border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+        .section-title { font-size: 15px; font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .section-link { font-size: 12px; color: var(--accent-cyan); text-decoration: none; font-weight: 500; }
+        .section-link:hover { text-decoration: underline; }
+
+        /* Grids */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .layout-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+
+        /* Smart Match specific */
+        .match-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(51, 65, 85, 0.5); border-radius: 8px; margin-bottom: 10px; transition: border 0.2s; }
+        .match-item:hover { border-color: rgba(56, 189, 248, 0.4); }
+        .match-score { background: rgba(16, 185, 129, 0.1); color: var(--accent-green); padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        /* Activity specific */
+        .activity-item { display: flex; gap: 15px; margin-bottom: 15px; position: relative; }
+        .activity-item::before { content: ''; position: absolute; left: 15px; top: 30px; bottom: -15px; width: 1px; background: var(--border-light); z-index: 0; }
+        .activity-item:last-child::before { display: none; }
+        .activity-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; z-index: 1; }
+
+        /* Table */
+        .table-container { overflow-x: auto; background: var(--bg-card); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-light); border-radius: 12px; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th { background: rgba(0,0,0,0.2); padding: 15px 20px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-light); }
+        td { padding: 15px 20px; font-size: 13px; color: #cbd5e1; border-bottom: 1px solid var(--border-light); }
         tr:last-child td { border-bottom: none; }
+        .badge-waste { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-req { background: rgba(59, 130, 246, 0.15); color: #3b82f6; padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; border: 1px solid rgba(59, 130, 246, 0.3); }
 
-        .type-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-        .type-waste { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-        .type-req { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+        /* Empty States */
+        .empty-state { text-align: center; padding: 40px 20px; display: none; }
+        .empty-icon { font-size: 48px; color: var(--text-muted); margin-bottom: 15px; opacity: 0.5; }
 
-        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-        .status-pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .status-accepted { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
-        .status-completed { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .status-rejected { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        /* Modals & Forms */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+        .form-control { background: #0f172a; color: white; padding: 12px; border: 1px solid #334155; border-radius: 8px; font-size: 13px; outline: none; transition: border 0.2s; }
+        .form-control:focus { border-color: var(--accent-cyan); }
+        .form-control:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .action-icon { color: #94a3b8; cursor: pointer; font-size: 18px; transition: 0.2s; margin-right: 10px; }
-        .action-icon.delete:hover { color: #ef4444; }
+        /* Settings Module Layout */
+        .settings-container { display: flex; gap: 30px; align-items: flex-start; }
+        .settings-sidebar { width: 240px; display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
+        .settings-nav-item { padding: 12px 15px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+        .settings-nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-main); }
+        .settings-nav-item.active { background: rgba(56, 189, 248, 0.1); color: var(--accent-cyan); border-color: rgba(56, 189, 248, 0.2); }
+        .settings-content { flex: 1; background: var(--bg-card); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-light); border-radius: 12px; padding: 30px; min-height: 500px; }
+        .settings-section { display: none; animation: fadeIn 0.3s ease; }
+        .settings-section.active { display: block; }
 
-        .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
-        .chart-card { background: #111827; padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .settings-header { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid var(--border-light); }
+        .settings-header h3 { font-size: 18px; color: var(--text-main); margin-bottom: 5px; }
+        .settings-header p { font-size: 12px; color: var(--text-muted); }
 
-        /* Matches Grid */
-        .matches-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; padding-bottom: 20px; }
-        .match-card { background: #111827; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;}
-        .match-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #10b981; }
-        .match-company { font-size: 18px; font-weight: 700; color: #f8fafc; margin-bottom: 5px; }
-        .match-industry { font-size: 12px; color: #94a3b8; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
-        .match-detail { background: #0f172a; padding: 10px; border-radius: 8px; font-size: 13px; color: #cbd5e1; margin-bottom: 15px; border: 1px dashed #334155; }
-        .match-contact { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #38bdf8; font-weight: 500; }
+        .mobile-settings-nav { display: none; width: 100%; background: #0f172a; color: white; padding: 12px; border: 1px solid #334155; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 1024px) {
+            .layout-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; transform: translateX(-100%); bottom: 0; }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { padding: 20px; }
+            .mobile-toggle { display: block; }
+            .analytics-grid { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+            .settings-container { flex-direction: column; }
+            .settings-sidebar { display: none; }
+            .mobile-settings-nav { display: block; }
+            .settings-content { width: 100%; padding: 20px; }
+        }
     </style>
 </head>
 <body>
 
-<!-- Sidebar -->
 <div class="sidebar" id="sidebar">
-    <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 40px; padding: 0;">
-        <img src="images/renode.webp" alt="ReNode Icon" style="height: 56px; width: 56px; object-fit: contain; border-radius: 14px; box-shadow: 0 4px 15px rgba(0, 210, 255, 0.2);">
-        <div style="display: flex; flex-direction: column; justify-content: center;">
-            <div style="font-family: 'Montserrat', sans-serif; font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 40%, #10b981 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; letter-spacing: -1px;">
-                ReNode
-            </div>
-            <div style="font-family: 'Inter', sans-serif; font-size: 8px; font-weight: 600; color: #94a3b8; letter-spacing: 1.2px; text-transform: uppercase; margin-top: 4px;">
-                Connect Supply. Unlock Growth.
-            </div>
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 40px;">
+        <img src="images/renode.webp" alt="ReNode" style="height: 44px; width: 44px; border-radius: 12px; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);">
+        <div>
+            <div style="font-family: 'Montserrat', sans-serif; font-size: 22px; font-weight: 800; background: linear-gradient(135deg, #38bdf8, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1;">ReNode</div>
+            <div style="font-size: 8px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 4px;">Exchange</div>
         </div>
     </div>
 
-    <div class="nav-item active" id="nav-resources" onclick="switchTab('resources')">
-        <i class="ph ph-squares-four"></i> My Resources
-    </div>
-    <div class="nav-item" id="nav-matches" onclick="switchTab('matches')">
-        <i class="ph ph-handshake"></i> Smart Matches
-    </div>
-    <div class="nav-item" id="nav-requests" onclick="switchTab('requests')">
-        <i class="ph ph-swap"></i> Transactions
-    </div>
-    <div class="nav-item" onclick="window.location.href='index.html'">
-        <i class="ph ph-map-trifold"></i> Network Map
-    </div>
+    <div class="nav-item active" onclick="switchTab('dashboard')"><i class="ph ph-squares-four"></i> Workspace</div>
+    <div class="nav-item" onclick="switchTab('resources')"><i class="ph ph-archive"></i> My Inventory</div>
+    <div class="nav-item" onclick="switchTab('matches')"><i class="ph ph-handshake"></i> Smart Matches</div>
+    <div class="nav-item" onclick="switchTab('map')"><i class="ph ph-map-trifold"></i> Network Map</div>
+    <div class="nav-item" onclick="switchTab('transactions')"><i class="ph ph-swap"></i> Action Center</div>
 
     <div style="margin-top: auto;">
-        <div class="nav-item" onclick="document.getElementById('editProfileModal').style.display='flex'">
-            <i class="ph ph-gear"></i> Settings
-        </div>
-        <div class="nav-item logout-btn" style="margin-top: 5px;" onclick="logout()">
-            <i class="ph ph-sign-out"></i> Logout
-        </div>
+        <div class="nav-item" onclick="switchTab('settings')"><i class="ph ph-gear"></i> Settings</div>
+        <div class="nav-item logout-btn" onclick="logout()"><i class="ph ph-sign-out"></i> Logout</div>
     </div>
 </div>
 
-<!-- Main Content -->
-<div class="main-content">
-    <div class="header">
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <i class="ph ph-list hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')"></i>
+<div class="main-content" id="mainContent">
+    <div class="header" id="pageHeader">
+        <div class="header-left">
+            <i class="ph ph-list mobile-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"></i>
             <div>
-                <h2 id="pageTitle">Workspace</h2>
-                <p id="pageDesc" style="color: #64748b; font-size: 13px; margin-top: 4px;">Manage your industrial resources</p>
+                <h2 id="pageTitle" style="margin-bottom: 2px;">Workspace Overview</h2>
+                <div style="color: var(--text-muted); font-size: 12px; display: flex; align-items: center; gap: 10px;">
+                    <span id="dateDisplay"></span>
+                    <button class="btn-outline btn-sm" onclick="loadAllData()" style="padding: 2px 6px; font-size: 10px; border-radius: 4px;"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div class="user-badge">
+                <i class="ph ph-buildings"></i> <span id="dashCompanyName">Loading...</span>
+                <i class="ph ph-seal-check" style="color: var(--accent-green); margin-left: 5px;" title="Verified Business"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW: WORKSPACE DASHBOARD -->
+    <div id="view-dashboard">
+        <div class="kpi-grid">
+            <div class="glass-card" style="display: flex; align-items: center; gap: 15px;">
+                <div style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); padding: 12px; border-radius: 10px; font-size: 24px;"><i class="ph ph-trash"></i></div>
+                <div><div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 600;">Available Waste (T)</div><div id="kpi-waste" style="font-size: 24px; font-weight: 800;">0</div></div>
+            </div>
+            <div class="glass-card" style="display: flex; align-items: center; gap: 15px;">
+                <div style="background: rgba(56, 189, 248, 0.1); color: var(--accent-cyan); padding: 12px; border-radius: 10px; font-size: 24px;"><i class="ph ph-package"></i></div>
+                <div><div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 600;">Active Req.</div><div id="kpi-req" style="font-size: 24px; font-weight: 800;">0</div></div>
+            </div>
+            <div class="glass-card" style="display: flex; align-items: center; gap: 15px;">
+                <div style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green); padding: 12px; border-radius: 10px; font-size: 24px;"><i class="ph ph-handshake"></i></div>
+                <div><div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 600;">Potential Matches</div><div id="kpi-matches" style="font-size: 24px; font-weight: 800;">0</div></div>
+            </div>
+            <div class="glass-card" style="display: flex; align-items: center; gap: 15px; border-color: rgba(245, 158, 11, 0.3);">
+                <div style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; padding: 12px; border-radius: 10px; font-size: 24px;"><i class="ph ph-clock"></i></div>
+                <div><div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 600;">Pending Actions</div><div id="kpi-pending" style="font-size: 24px; font-weight: 800;">0</div></div>
             </div>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <!-- Notifications Bell -->
-            <div class="notification-wrapper">
-                <i class="ph ph-bell bell-icon" onclick="document.getElementById('notifDropdown').classList.toggle('show')"></i>
-                <div class="badge" id="notifBadge">0</div>
-                <div class="notif-dropdown" id="notifDropdown">
-                    <div style="font-size: 14px; font-weight: 600; color: white; margin-bottom: 10px;">Recent Activity</div>
-                    <div id="notifList">
-                        <div class="notif-item">No new notifications</div>
+        <div class="layout-grid">
+            <div>
+                <div class="glass-card" style="margin-bottom: 20px;">
+                    <div class="section-title">
+                        <div><i class="ph ph-target"></i> Recommended Opportunities</div>
+                        <a href="#" onclick="switchTab('matches')" class="section-link">View All Network</a>
+                    </div>
+                    <div id="dashMatchesPreview">
+                        <div id="matchesEmpty" class="empty-state" style="display: block;">
+                            <i class="ph ph-magnifying-glass empty-icon"></i>
+                            <h4 style="color: var(--text-main); margin-bottom: 5px;">No Smart Matches Yet</h4>
+                            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Adjust your listings or expand search radius to discover partners.</p>
+                            <button class="btn btn-secondary btn-sm" onclick="switchTab('matches')">Update Radius</button>
+                        </div>
+                        <div id="matchesList"></div>
+                    </div>
+                </div>
+
+                <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(7, 11, 20, 1) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                    <div class="section-title" style="margin-bottom: 20px; color: var(--accent-green);"><i class="ph ph-leaf"></i> Verified Sustainability Impact</div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
+                        <div><div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Waste Diverted</div><div style="font-size: 20px; font-weight: 700; color: var(--text-main);"><span id="susTons">0</span>t</div></div>
+                        <div><div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">CO2 Avoided</div><div style="font-size: 20px; font-weight: 700; color: var(--accent-green);"><span id="susCO2">0</span>t</div></div>
+                        <div><div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Est. Disposal Savings</div><div style="font-size: 20px; font-weight: 700; color: var(--text-main);"><span id="susSavings">₹0</span></div></div>
+                        <div><div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Material Revenue</div><div style="font-size: 20px; font-weight: 700; color: var(--text-main);"><span id="susRevenue">₹0</span></div></div>
                     </div>
                 </div>
             </div>
 
-            <div class="user-badge">
-                <i class="ph ph-buildings"></i> <span id="dashCompanyName">Loading...</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- TAB 1: MY RESOURCES -->
-    <div id="tab-resources">
-
-        <!-- Top KPI Overview Cards -->
-        <div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
-
-            <div class="kpi-card" style="background: rgba(17, 24, 39, 0.65); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <div style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 12px; border-radius: 10px; font-size: 24px; display: flex;">
-                    <i class="ph ph-trash"></i>
-                </div>
-                <div>
-                    <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Total Waste</div>
-                    <div id="kpi-waste" style="color: #f8fafc; font-size: 24px; font-weight: 800; margin-top: 4px;">0</div>
-                </div>
-            </div>
-
-            <div class="kpi-card" style="background: rgba(17, 24, 39, 0.65); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <div style="background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 12px; border-radius: 10px; font-size: 24px; display: flex;">
-                    <i class="ph ph-package"></i>
-                </div>
-                <div>
-                    <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Active Req.</div>
-                    <div id="kpi-req" style="color: #f8fafc; font-size: 24px; font-weight: 800; margin-top: 4px;">0</div>
-                </div>
-            </div>
-
-            <div class="kpi-card" style="background: rgba(17, 24, 39, 0.65); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 12px; border-radius: 10px; font-size: 24px; display: flex;">
-                    <i class="ph ph-handshake"></i>
-                </div>
-                <div>
-                    <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Successful Matches</div>
-                    <div id="kpi-matches" style="color: #f8fafc; font-size: 24px; font-weight: 800; margin-top: 4px;">0</div>
-                </div>
-            </div>
-
-            <div class="kpi-card" style="background: rgba(17, 24, 39, 0.65); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <div style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; padding: 12px; border-radius: 10px; font-size: 24px; display: flex;">
-                    <i class="ph ph-clock"></i>
-                </div>
-                <div>
-                    <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Pending Requests</div>
-                    <div id="kpi-pending" style="color: #f8fafc; font-size: 24px; font-weight: 800; margin-top: 4px;">0</div>
+            <div>
+                <div class="glass-card" style="margin-bottom: 20px; height: 100%;">
+                    <div class="section-title">
+                        <div><i class="ph ph-lightning"></i> Action Center</div>
+                        <a href="#" onclick="switchTab('transactions')" class="section-link">Manage</a>
+                    </div>
+                    <div id="dashActionCenter">
+                        <div id="actionEmpty" class="empty-state" style="display: block; padding: 20px 0;">
+                            <i class="ph ph-check-circle empty-icon" style="font-size: 32px;"></i>
+                            <h4 style="font-size: 13px; margin-bottom: 5px;">All caught up!</h4>
+                            <p style="font-size: 11px; color: var(--text-muted);">No pending requests or deals require your immediate approval.</p>
+                        </div>
+                        <div id="actionList"></div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Analytics Charts Grid -->
+        <h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 600;">Inventory Analytics</h3>
         <div class="analytics-grid">
-            <div class="chart-card">
-                <h4 style="color: #94a3b8; font-size: 13px; text-transform: uppercase; margin-bottom: 15px;">Resource Distribution</h4>
-                <div style="height: 200px;"><canvas id="typeChart"></canvas></div>
+            <div class="glass-card">
+                <div class="section-title">Resource Distribution</div>
+                <div style="height: 180px;"><canvas id="typeChart"></canvas></div>
             </div>
-            <div class="chart-card">
-                <h4 style="color: #94a3b8; font-size: 13px; text-transform: uppercase; margin-bottom: 15px;">Volume Analysis (Tons)</h4>
-                <div style="height: 200px;"><canvas id="volumeChart"></canvas></div>
+            <div class="glass-card">
+                <div class="section-title">Volume & Trends (Tons)</div>
+                <div style="height: 180px;"><canvas id="volumeChart"></canvas></div>
             </div>
-        </div>
-
-        <div class="action-bar">
-            <button class="btn btn-primary" onclick="document.getElementById('addResourceModal').style.display='flex'; document.getElementById('resType').value='WASTE';"><i class="ph ph-plus"></i> Add Waste</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('addResourceModal').style.display='flex'; document.getElementById('resType').value='REQUIREMENT';"><i class="ph ph-list-plus"></i> Add Requirement</button>
-        </div>
-
-        <div class="table-container">
-            <table>
-                <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Category / Material</th>
-                    <th>Quantity (Tons)</th>
-                    <th>Description</th>
-                    <th>Actions</th>
-                </tr>
-                </thead>
-                <tbody id="resourceTableBody">
-                <tr><td colspan="5" style="text-align: center; padding: 30px; color: #64748b;">Loading your resources...</td></tr>
-                </tbody>
-            </table>
         </div>
     </div>
 
-    <!-- TAB 2: SMART MATCHES -->
-    <div id="tab-matches" style="display: none;">
-        <div class="action-bar" style="margin-bottom: 20px; justify-content: space-between;">
-            <label style="color: #94a3b8; font-size: 14px; display: flex; align-items: center; gap: 10px;">
-                Search Radius:
-                <select id="matchRadius" onchange="fetchMatches()" style="background: #1e293b; color: white; border: 1px solid #334155; padding: 5px 10px; border-radius: 5px;">
-                    <option value="50">50 km</option>
-                    <option value="100">100 km</option>
-                    <option value="200">200 km</option>
-                    <option value="500">500 km</option>
+    <!-- VIEW: MY INVENTORY -->
+    <div id="view-resources" style="display: none;">
+        <div class="glass-card" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="openResourceModal('WASTE')"><i class="ph ph-plus"></i> Add Waste</button>
+                <button class="btn btn-secondary" onclick="openResourceModal('REQUIREMENT')"><i class="ph ph-list-plus"></i> Add Requirement</button>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="tableSearch" placeholder="Search categories..." onkeyup="filterInventory()" class="form-control" style="width: 250px;">
+                <select id="tableTypeFilter" onchange="filterInventory()" class="form-control">
+                    <option value="ALL">All Types</option>
+                    <option value="WASTE">Waste Only</option>
+                    <option value="REQUIREMENT">Req Only</option>
                 </select>
-            </label>
-            <button class="btn btn-pdf" onclick="exportPDF()"><i class="ph ph-file-pdf"></i> Export Report</button>
+            </div>
         </div>
-
-        <div id="matchesContainer" class="matches-grid">
-            <!-- Matches cards will be injected here -->
-        </div>
-    </div>
-
-    <!-- TAB 3: TRANSACTIONS & REQUESTS -->
-    <div id="tab-requests" style="display: none;">
-        <h3 style="color: #f8fafc; font-size: 18px; margin-bottom: 15px;">Incoming Requests</h3>
         <div class="table-container">
-            <table>
+            <table id="inventoryTable">
                 <thead>
                 <tr>
-                    <th>From Company</th>
-                    <th>Material</th>
-                    <th>Requested Qty</th>
-                    <th>Status</th>
+                    <th>Listing Type</th>
+                    <th>Category / Specs</th>
+                    <th onclick="sortInventory(2)" style="cursor: pointer;">Qty (T) <i class="ph ph-arrows-down-up"></i></th>
+                    <th>Price/Unit</th>
+                    <th>Status & Updated</th>
                     <th>Actions</th>
                 </tr>
                 </thead>
-                <tbody id="incomingRequestsBody">
-                <tr><td colspan="5" style="text-align: center; padding: 30px; color: #64748b;">Loading incoming requests...</td></tr>
+                <tbody id="inventoryTableBody">
+                <tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Loading inventory records...</td></tr>
                 </tbody>
             </table>
         </div>
+    </div>
 
-        <h3 style="color: #f8fafc; font-size: 18px; margin-bottom: 15px; margin-top: 30px;">My Outgoing Requests</h3>
+    <!-- VIEW: SMART MATCHES -->
+    <div id="view-matches" style="display: none;">
+        <div class="glass-card" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 13px; font-weight: 600;">Spatial Filter:</span>
+                <select id="matchRadius" onchange="loadMatches()" class="form-control" style="width: 150px;">
+                    <option value="50">50 km Radius</option>
+                    <option value="100">100 km Radius</option>
+                    <option value="200">200 km Radius</option>
+                    <option value="500">500 km Radius</option>
+                </select>
+            </div>
+        </div>
+        <div id="fullMatchesContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;"></div>
+    </div>
+
+    <!-- VIEW: NETWORK MAP -->
+    <div id="view-map" style="display: none;">
+        <div class="glass-card" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 13px; font-weight: 600;">Map Radius Filter:</span>
+                <select id="mapRadiusSelect" onchange="updateMapRadius()" class="form-control" style="width: 150px;">
+                    <option value="25">25 km</option>
+                    <option value="50" selected>50 km</option>
+                    <option value="100">100 km</option>
+                    <option value="500">Pan-India (500 km)</option>
+                </select>
+            </div>
+            <div style="color: var(--text-muted); font-size: 12px;">
+                <i class="ph ph-info"></i> Real-time verified facility nodes across the network.
+            </div>
+        </div>
+
+        <!-- Leaflet Map Container -->
+        <div class="glass-card" style="padding: 0; overflow: hidden; height: 600px; border: 1px solid var(--border-light);">
+            <div id="leafletMap" style="width: 100%; height: 100%; background: #070b14;"></div>
+        </div>
+    </div>
+
+    <!-- VIEW: TRANSACTIONS -->
+    <div id="view-transactions" style="display: none;">
+        <h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 600;">Pending Inquiries (Incoming)</h3>
+        <div class="table-container" style="margin-bottom: 30px;">
+            <table>
+                <thead><tr><th>Originating Company</th><th>Material Subject</th><th>Volume Requested</th><th>Pipeline Status</th><th>Action Required</th></tr></thead>
+                <tbody id="incomingReqBody"><tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">No active incoming inquiries.</td></tr></tbody>
+            </table>
+        </div>
+        <h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 600;">Active Offers (Outgoing)</h3>
         <div class="table-container">
             <table>
-                <thead>
-                <tr>
-                    <th>To Company</th>
-                    <th>Material</th>
-                    <th>Requested Qty</th>
-                    <th>Status</th>
-                </tr>
-                </thead>
-                <tbody id="outgoingRequestsBody">
-                <tr><td colspan="4" style="text-align: center; padding: 30px; color: #64748b;">Loading outgoing requests...</td></tr>
-                </tbody>
+                <thead><tr><th>Target Partner</th><th>Material Subject</th><th>Volume Requested</th><th>Pipeline Status</th></tr></thead>
+                <tbody id="outgoingReqBody"><tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">No active outgoing offers.</td></tr></tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- VIEW: SETTINGS -->
+    <div id="view-settings" style="display: none;">
+        <div class="settings-container">
+            <!-- Mobile Navigation -->
+            <select class="mobile-settings-nav" id="mobileSettingsNav" onchange="switchSettingsTab(this.value)">
+                <option value="set-company">Company Profile</option>
+                <option value="set-verification">Verification & Compliance</option>
+                <option value="set-market">Marketplace Preferences</option>
+                <option value="set-notifications">Notifications</option>
+                <option value="set-security">Security</option>
+                <option value="set-integration">Integrations</option>
+                <option value="set-terms">Terms & Conditions</option>
+            </select>
+
+            <!-- Desktop Navigation -->
+            <div class="settings-sidebar" id="settingsSidebar">
+                <div class="settings-nav-item active" onclick="switchSettingsTab('set-company')" data-target="set-company">Company Profile</div>
+                <div class="settings-nav-item" onclick="switchSettingsTab('set-verification')" data-target="set-verification">Verification & Compliance</div>
+                <div class="settings-nav-item" onclick="switchSettingsTab('set-market')" data-target="set-market">Marketplace Preferences</div>
+                <div class="settings-nav-item" onclick="switchSettingsTab('set-notifications')" data-target="set-notifications">Notifications</div>
+                <div class="settings-nav-item" onclick="switchSettingsTab('set-security')" data-target="set-security">Security</div>
+                <div class="settings-nav-item" onclick="switchSettingsTab('set-integration')" data-target="set-integration">Integrations</div>
+                <div class="settings-nav-item" onclick="switchSettingsTab('set-terms')" data-target="set-terms">Terms & Conditions</div>
+            </div>
+
+            <!-- Settings Content Panels -->
+            <div class="settings-content">
+
+                <!-- Company Profile -->
+                <div id="set-company" class="settings-section active">
+                    <div class="settings-header">
+                        <h3>Company Profile</h3>
+                        <p>Manage your public business identity on the ReNode network.</p>
+                    </div>
+                    <form id="form-set-company" onsubmit="saveCompanySettings(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Legal Company Name</label>
+                                <input type="text" id="setCompanyName" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Industry Sector</label>
+                                <input type="text" id="setIndustry" class="form-control">
+                            </div>
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label class="form-label">Company Description</label>
+                                <textarea id="setDesc" class="form-control" rows="3" placeholder="Describe your industrial operations and primary materials..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Website</label>
+                                <input type="url" id="setWebsite" class="form-control" placeholder="https://">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Business Tax ID / GSTIN</label>
+                                <input type="text" id="setTaxId" class="form-control" placeholder="Optional">
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+                            <button type="submit" class="btn btn-primary" id="btn-save-company">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Verification & Compliance -->
+                <div id="set-verification" class="settings-section">
+                    <div class="settings-header">
+                        <h3>Verification & Compliance</h3>
+                        <p>Maintain your verified partner status to unlock high-volume deals.</p>
+                    </div>
+
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                        <i class="ph ph-seal-check" style="font-size: 32px; color: var(--accent-green);"></i>
+                        <div>
+                            <h4 style="color: var(--accent-green); margin-bottom: 5px;" id="verificationStatusText">Verified Partner</h4>
+                            <p style="font-size: 12px; color: var(--text-muted);" id="verificationDescText">Your business identity has been verified. No pending actions required.</p>
+                        </div>
+                    </div>
+
+                    <form onsubmit="uploadDocument(event)">
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label class="form-label">Upload Compliance Document (e.g., Pollution Control Board NOC)</label>
+                            <input type="file" id="complianceDoc" class="form-control" style="padding: 9px;" accept=".pdf,.png,.jpg" required>
+                        </div>
+                        <p id="upload-msg" style="font-size: 12px; margin-bottom: 15px;"></p>
+                        <button type="submit" class="btn btn-primary" id="btn-upload-doc">Upload Document</button>
+                    </form>
+                </div>
+
+                <!-- Marketplace Preferences -->
+                <div id="set-market" class="settings-section">
+                    <div class="settings-header">
+                        <h3>Marketplace Preferences</h3>
+                        <p>Tune the algorithm for your Smart Matches.</p>
+                    </div>
+                    <form id="form-set-market" onsubmit="saveMarketPreferences(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Default Search Radius (km)</label>
+                                <input type="number" id="setSearchRadius" class="form-control" value="50" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Preferred Unit</label>
+                                <select id="setPreferredUnit" class="form-control">
+                                    <option value="Metric Tons (t)">Metric Tons (t)</option>
+                                    <option value="Kilograms (kg)">Kilograms (kg)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+                            <button type="submit" class="btn btn-primary" id="btn-save-market">Save Preferences</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Notifications -->
+                <div id="set-notifications" class="settings-section">
+                    <div class="settings-header">
+                        <h3>Notification Preferences</h3>
+                        <p>Control what alerts you receive via email and in-app.</p>
+                    </div>
+                    <form onsubmit="saveNotifications(event)">
+                        <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;">
+                            <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-main);">
+                                <input type="checkbox" id="notif-match" checked> New Smart Matches discovered
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-main);">
+                                <input type="checkbox" id="notif-req" checked> Incoming transaction requests
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-main);">
+                                <input type="checkbox" id="notif-digest" checked> Daily digest of ecosystem activity
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="btn-save-notif">Save Notifications</button>
+                    </form>
+                </div>
+
+                <!-- Security -->
+                <div id="set-security" class="settings-section">
+                    <div class="settings-header">
+                        <h3>Security & Access</h3>
+                        <p>Manage passwords and authentication methods.</p>
+                    </div>
+                    <form onsubmit="updatePassword(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Current Password</label>
+                                <input type="password" id="currentPassword" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">New Password</label>
+                                <input type="password" id="newPassword" class="form-control" minlength="6" required>
+                            </div>
+                        </div>
+                        <p id="password-msg" style="font-size: 12px; margin-top: 5px;"></p>
+                        <button type="submit" class="btn btn-primary" id="btn-update-pwd" style="margin-top: 15px;">Update Password</button>
+                    </form>
+                </div>
+
+                <!-- Integrations -->
+                <div id="set-integration" class="settings-section">
+                    <div class="settings-header">
+                        <h3>Software Integrations</h3>
+                        <p>Connect your internal ERP or Logistics software securely.</p>
+                    </div>
+                    <form onsubmit="saveIntegrations(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Integration Provider</label>
+                                <select id="intProvider" class="form-control">
+                                    <option value="SAP ERP">SAP ERP</option>
+                                    <option value="Tally Prime">Tally Prime</option>
+                                    <option value="Custom Webhook">Custom Webhook</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">API Key / Secret Token</label>
+                                <input type="password" id="intApiKey" class="form-control" placeholder="Enter API Key..." required>
+                            </div>
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label class="form-label">Webhook Endpoint URL</label>
+                                <input type="url" id="intWebhook" class="form-control" placeholder="https://your-server.com/webhook">
+                            </div>
+                        </div>
+                        <p id="int-msg" style="font-size: 12px; margin-top: 10px;"></p>
+                        <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+                            <button type="submit" class="btn btn-primary" id="btn-save-int">Save & Connect</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Terms & Conditions (EDITABLE) -->
+                <div id="set-terms" class="settings-section">
+                    <div class="settings-header">
+                        <h3>Terms & Conditions</h3>
+                        <p>Manage and update platform guidelines and legal text.</p>
+                    </div>
+                    <form onsubmit="saveTerms(event)">
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label class="form-label">Document Title</label>
+                            <input type="text" id="termsTitleInput" class="form-control" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label class="form-label">Terms Content (Editable)</label>
+                            <textarea id="termsContentInput" class="form-control" rows="10" placeholder="Write or update terms and conditions here..." required></textarea>
+                        </div>
+                        <p id="terms-msg" style="font-size: 12px; margin-bottom: 15px;"></p>
+                        <div style="display: flex; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary" id="btn-save-terms">Save Terms</button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Add Resource Modal -->
-<div id="addResourceModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(5px);">
-    <div style="background: #111827; padding: 30px; border-radius: 15px; width: 90%; max-width: 350px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
-        <h3 style="color: #f8fafc; margin-top: 0; margin-bottom: 20px;">Add New Listing</h3>
-        <form id="resourceForm" style="display: flex; flex-direction: column; gap: 15px;">
-            <select id="resType" required style="background: #0f172a; color: white; padding: 12px; border: 1px solid #334155; border-radius: 8px;">
-                <option value="WASTE">Waste (I want to give)</option>
-                <option value="REQUIREMENT">Requirement (I need)</option>
-            </select>
-            <input type="text" id="resCategory" placeholder="Category (e.g. Wood, Plastic)" required style="background: #0f172a; color: white; padding: 12px; border: 1px solid #334155; border-radius: 8px;">
-            <input type="number" id="resQuantity" placeholder="Quantity (in tons)" required style="background: #0f172a; color: white; padding: 12px; border: 1px solid #334155; border-radius: 8px;">
-            <input type="text" id="resDesc" placeholder="Short Description" style="background: #0f172a; color: white; padding: 12px; border: 1px solid #334155; border-radius: 8px;">
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Save</button>
-                <button type="button" onclick="document.getElementById('addResourceModal').style.display='none'" class="btn" style="flex: 1; background: #334155; color: white; justify-content: center;">Cancel</button>
+<!-- Unified Advanced Resource Modal -->
+<div id="resourceModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
+    <div class="glass-card" style="width: 90%; max-width: 600px; padding: 30px;">
+        <h3 id="resModalTitle" style="margin-bottom: 20px;">Add New Resource</h3>
+        <form id="resourceForm" onsubmit="saveResource(event)">
+            <input type="hidden" id="resId">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Listing Intent</label>
+                    <select id="resType" class="form-control" required>
+                        <option value="WASTE">List Available Waste (Supply)</option>
+                        <option value="REQUIREMENT">List Material Requirement (Demand)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Material Category (Strict Match)</label>
+                    <input type="text" id="resCategory" class="form-control" placeholder="e.g. Steel, PVC Plastic, Wood" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Quantity (Metric Tons)</label>
+                    <input type="number" step="0.1" id="resQuantity" class="form-control" placeholder="0.0" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Target Price (Per Ton)</label>
+                    <input type="number" id="resPrice" class="form-control" placeholder="Optional. Leave blank if unpriced">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label class="form-label">Technical Specifications & Purity</label>
+                    <input type="text" id="resDesc" class="form-control" placeholder="Grade, condition, contamination details, handling requirements...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Availability Expiry</label>
+                    <input type="date" id="resExpiry" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location Data</label>
+                    <input type="text" class="form-control" value="Sourced from Company Profile" disabled>
+                </div>
             </div>
-        </form>
-    </div>
-</div>
-
-<!-- Edit Profile Modal -->
-<div id="editProfileModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(5px);">
-    <div style="background: #111827; padding: 30px; border-radius: 15px; width: 90%; max-width: 350px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
-        <h3 style="color: #f8fafc; margin-top: 0; margin-bottom: 20px;">Edit Company Profile</h3>
-        <form id="editProfileForm" style="display: flex; flex-direction: column; gap: 15px;">
-            <input type="text" id="editCompName" placeholder="Company Name" style="background: #0f172a; color: white; padding: 12px; border: 1px solid #334155; border-radius: 8px;">
-            <input type="text" id="editIndustry" placeholder="Industry Type" style="background: #0f172a; color: white; padding: 12px; border: 1px solid #334155; border-radius: 8px;">
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center;">Update</button>
-                <button type="button" onclick="document.getElementById('editProfileModal').style.display='none'" class="btn" style="flex: 1; background: #334155; color: white; justify-content: center;">Cancel</button>
+            <div style="display: flex; gap: 15px; margin-top: 10px; justify-content: flex-end;">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('resourceModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="resSubmitBtn">Save to Inventory</button>
             </div>
         </form>
     </div>
@@ -356,295 +625,229 @@
     const companyName = localStorage.getItem('companyName');
     const token = localStorage.getItem('jwt_token');
 
-    if (!companyId || !token) {
-        window.location.href = 'login.html';
-    } else {
+    if (!companyId || !token) window.location.href = 'login.html';
+
+    document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('dashCompanyName').innerText = companyName;
-        fetchMyResources();
-        fetchMatches();
-        loadDashboardKPIs();
-    }
+        document.getElementById('dateDisplay').innerText = new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
 
-    let typeChartInst = null;
-    let volChartInst = null;
-
-    function switchTab(tabName) {
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        document.getElementById('nav-' + tabName).classList.add('active');
-
-        document.getElementById('tab-resources').style.display = 'none';
-        document.getElementById('tab-matches').style.display = 'none';
-        document.getElementById('tab-requests').style.display = 'none';
-
-        document.getElementById('sidebar').classList.remove('open');
-
-        if(tabName === 'resources') {
-            document.getElementById('tab-resources').style.display = 'block';
-            document.getElementById('pageTitle').innerText = 'Workspace';
-            document.getElementById('pageDesc').innerText = 'Manage your industrial resources';
-            loadDashboardKPIs();
-        } else if(tabName === 'matches') {
-            document.getElementById('tab-matches').style.display = 'block';
-            document.getElementById('pageTitle').innerText = 'Smart Matches';
-            document.getElementById('pageDesc').innerText = 'Factories that need your waste, or have what you need';
-            fetchMatches();
-        } else if(tabName === 'requests') {
-            document.getElementById('tab-requests').style.display = 'block';
-            document.getElementById('pageTitle').innerText = 'Transactions';
-            document.getElementById('pageDesc').innerText = 'Manage your incoming and outgoing resource requests';
-            fetchRequests();
-        }
-    }
-
-    function updateCharts(resources) {
-        let wCount = 0, rCount = 0, wVol = 0, rVol = 0;
-        resources.forEach(res => {
-            if(res.listingType === 'WASTE') { wCount++; wVol += res.quantityInTons; }
-            else { rCount++; rVol += res.quantityInTons; }
+        document.getElementById('mainContent').addEventListener('scroll', (e) => {
+            const header = document.getElementById('pageHeader');
+            if (e.target.scrollTop > 10) header.classList.add('scrolled');
+            else header.classList.remove('scrolled');
         });
 
-        if(typeChartInst) typeChartInst.destroy();
-        typeChartInst = new Chart(document.getElementById('typeChart'), {
-            type: 'doughnut',
-            data: { labels: ['Waste', 'Requirement'], datasets: [{ data: [wCount, rCount], backgroundColor: ['#ef4444', '#3b82f6'], borderColor: '#111827', borderWidth: 3 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } } }
-        });
-
-        if(volChartInst) volChartInst.destroy();
-        volChartInst = new Chart(document.getElementById('volumeChart'), {
-            type: 'bar',
-            data: { labels: ['Waste (T)', 'Req (T)'], datasets: [{ data: [wVol, rVol], backgroundColor: ['rgba(239, 68, 68, 0.8)', 'rgba(59, 130, 246, 0.8)'], borderRadius: 6 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#cbd5e1' } }, x: { ticks: { color: '#cbd5e1' } } } }
-        });
-    }
-
-    async function fetchMyResources() {
-        try {
-            const response = await fetch(`http://localhost:8080/api/companies/${companyId}/resources`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const resources = await response.json();
-            updateCharts(resources);
-
-            const tbody = document.getElementById('resourceTableBody');
-            tbody.innerHTML = '';
-            if(resources.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #64748b;">No resources added yet.</td></tr>';
-                return;
-            }
-            resources.forEach(res => {
-                const typeClass = res.listingType === 'WASTE' ? 'type-waste' : 'type-req';
-                tbody.innerHTML += `<tr>
-                    <td><span class="type-badge ${typeClass}">${res.listingType}</span></td>
-                    <td style="font-weight: 500; color: #f8fafc;">${res.category}</td>
-                    <td>${res.quantityInTons}t</td>
-                    <td style="color: #94a3b8;">${res.description || '-'}</td>
-                    <td><i class="ph ph-trash action-icon delete" onclick="deleteResource(${res.id})"></i></td>
-                </tr>`;
-            });
-        } catch (error) { console.error(error); }
-    }
-
-    document.getElementById('resourceForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const payload = { listingType: document.getElementById('resType').value, category: document.getElementById('resCategory').value, quantityInTons: document.getElementById('resQuantity').value, description: document.getElementById('resDesc').value };
-        try {
-            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/resources`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(payload)
-            });
-            if (res.ok) { document.getElementById('addResourceModal').style.display = 'none'; document.getElementById('resourceForm').reset(); fetchMyResources(); loadDashboardKPIs(); }
-        } catch (error) { console.error(error); }
+        loadAllData();
     });
 
-    async function deleteResource(id) {
-        if(confirm("Delete this listing?")) {
-            try {
-                const res = await fetch(`http://localhost:8080/api/companies/${companyId}/resources/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) { fetchMyResources(); loadDashboardKPIs(); }
-            } catch (error) { console.error(error); }
+    let chartType, chartVol;
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+
+        ['dashboard', 'resources', 'matches', 'map', 'transactions', 'settings'].forEach(id => {
+            document.getElementById(`view-${id}`).style.display = 'none';
+        });
+        document.getElementById(`view-${tabId}`).style.display = 'block';
+        document.getElementById('sidebar').classList.remove('open');
+
+        const titles = {
+            'dashboard': 'Workspace Overview',
+            'resources': 'Inventory Management',
+            'matches': 'Smart Partner Recommendations',
+            'map': 'Industrial Network Map',
+            'transactions': 'Action Center & Pipeline',
+            'settings': 'Settings & Preferences'
+        };
+        document.getElementById('pageTitle').innerText = titles[tabId];
+
+        if(tabId === 'resources') loadInventory();
+        if(tabId === 'matches') loadMatches();
+        if(tabId === 'map') initLeafletMap();
+        if(tabId === 'transactions') loadTransactions();
+        if(tabId === 'settings') loadCompanyProfile();
+    }
+
+    function switchSettingsTab(targetId) {
+        document.querySelectorAll('.settings-nav-item').forEach(el => el.classList.remove('active'));
+        const activeNav = document.querySelector(`.settings-nav-item[data-target="${targetId}"]`);
+        if(activeNav) activeNav.classList.add('active');
+
+        document.getElementById('mobileSettingsNav').value = targetId;
+
+        document.querySelectorAll('.settings-section').forEach(el => el.classList.remove('active'));
+        document.getElementById(targetId).classList.add('active');
+
+        if(targetId === 'set-terms') {
+            loadDynamicTerms();
         }
     }
 
-    async function fetchMatches() {
-        const radius = document.getElementById('matchRadius').value;
-        const container = document.getElementById('matchesContainer');
-        const notifBadge = document.getElementById('notifBadge');
+    let leafletMapInstance = null;
 
-        if (container.style.display !== 'none') container.innerHTML = '<div style="color: #38bdf8;">Finding perfect matches...</div>';
+    async function initLeafletMap() {
+        if (!leafletMapInstance) {
+            leafletMapInstance = L.map('leafletMap').setView([27.56, 79.92], 7);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(leafletMapInstance);
+        } else {
+            leafletMapInstance.invalidateSize();
+        }
 
         try {
-            const response = await fetch(`http://localhost:8080/api/companies/${companyId}/matches?radius=${radius}`, {
+            const radius = document.getElementById('mapRadiusSelect').value;
+            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/nearby?radius=${radius}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            const matches = await response.json();
+            if (res.ok) {
+                const companies = await res.json();
 
-            notifBadge.innerText = matches.length;
-            if(matches.length === 0) {
-                container.innerHTML = '<div style="color: #64748b; padding: 20px;">No matches found in this radius.</div>';
-                return;
-            }
+                companies.forEach(comp => {
+                    if (comp.location && comp.location.coordinates) {
+                        const lon = comp.location.coordinates[0];
+                        const lat = comp.location.coordinates[1];
 
-            container.innerHTML = '';
-            matches.forEach(match => {
-                const matchType = match.matchedResourceType === 'WASTE' ? 'They have Waste you need' : 'They need your Waste';
-                const color = match.matchedResourceType === 'WASTE' ? '#ef4444' : '#3b82f6';
-
-                // Ensure we pass the correct ID to the request function. Adjust if backend DTO differs.
-                const resourceIdToRequest = match.matchedResourceId || match.id || 1;
-
-                container.innerHTML += `
-                    <div class="match-card">
-                        <div>
-                            <div class="match-company">${match.matchedCompany.companyName}</div>
-                            <div class="match-industry"><i class="ph ph-factory"></i> ${match.matchedCompany.industryType} • ${match.distanceKm.toFixed(1)} km away</div>
-                            <div class="match-detail">
-                                <span style="color: ${color}; font-weight: 600; font-size: 11px; text-transform: uppercase;">${matchType}</span><br>
-                                <strong style="color: white; font-size: 15px;">${match.matchedCategory}</strong> (${match.matchedQuantity} Tons)
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 10px; margin-top: 15px;">
-                            <button class="btn btn-primary btn-sm" onclick="sendRequest(${match.matchedCompany.id}, ${resourceIdToRequest}, ${match.matchedQuantity})" style="flex: 1; justify-content: center;">Send Request</button>
-                            <a href="mailto:${match.matchedCompany.contactEmail}" class="btn btn-secondary btn-sm" style="flex: 1; justify-content: center; text-decoration: none;"><i class="ph ph-envelope-simple"></i> Email</a>
-                        </div>
-                    </div>`;
-            });
-        } catch (error) { console.error(error); }
-    }
-
-    // NEW: Send Request Function
-    async function sendRequest(receiverId, resourceId, qty) {
-        if(confirm("Send a transaction request for this material?")) {
-            try {
-                const res = await fetch(`http://localhost:8080/api/requests/send`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({
-                        senderId: companyId,
-                        receiverId: receiverId,
-                        resourceId: resourceId,
-                        requestedQuantity: qty
-                    })
+                        L.marker([lat, lon]).addTo(leafletMapInstance)
+                            .bindPopup(`<b>${comp.companyName}</b><br>Sector: ${comp.industryType || 'Industrial'}<br>Status: Verified`);
+                    }
                 });
-                if(res.ok) {
-                    alert("Request sent successfully! Check your Transactions tab.");
-                    loadDashboardKPIs();
-                } else {
-                    alert("Failed to send request.");
-                }
-            } catch(e) { console.error(e); }
+            }
+        } catch (e) {
+            console.error("Error loading map markers", e);
         }
     }
 
-    // NEW: Fetch and Display Transactions
-    async function fetchRequests() {
-        try {
-            // Incoming
-            const inRes = await fetch(`http://localhost:8080/api/requests/incoming/${companyId}`, { headers: { 'Authorization': `Bearer ${token}` }});
-            const incoming = await inRes.json();
-            const inBody = document.getElementById('incomingRequestsBody');
-            inBody.innerHTML = '';
-
-            if(incoming.length === 0) {
-                inBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #64748b;">No incoming requests.</td></tr>';
-            } else {
-                incoming.forEach(req => {
-                    let actionHtml = '-';
-                    if(req.status === 'PENDING') {
-                        actionHtml = `
-                            <button class="btn btn-success btn-sm" onclick="updateReqStatus(${req.id}, 'ACCEPTED')">Accept</button>
-                            <button class="btn btn-danger btn-sm" onclick="updateReqStatus(${req.id}, 'REJECTED')">Reject</button>
-                        `;
-                    } else if(req.status === 'ACCEPTED') {
-                        actionHtml = `<button class="btn btn-primary btn-sm" onclick="updateReqStatus(${req.id}, 'COMPLETED')">Mark Complete</button>`;
-                    }
-
-                    inBody.innerHTML += `
-                        <tr>
-                            <td style="color: #f8fafc; font-weight: 500;">${req.sender.companyName}</td>
-                            <td>${req.resource.category}</td>
-                            <td>${req.requestedQuantity}t</td>
-                            <td><span class="status-badge status-${req.status.toLowerCase()}">${req.status}</span></td>
-                            <td style="display: flex; gap: 8px;">${actionHtml}</td>
-                        </tr>
-                    `;
-                });
-            }
-
-            // Outgoing
-            const outRes = await fetch(`http://localhost:8080/api/requests/outgoing/${companyId}`, { headers: { 'Authorization': `Bearer ${token}` }});
-            const outgoing = await outRes.json();
-            const outBody = document.getElementById('outgoingRequestsBody');
-            outBody.innerHTML = '';
-
-            if(outgoing.length === 0) {
-                outBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #64748b;">No outgoing requests.</td></tr>';
-            } else {
-                outgoing.forEach(req => {
-                    outBody.innerHTML += `
-                        <tr>
-                            <td style="color: #f8fafc; font-weight: 500;">${req.receiver.companyName}</td>
-                            <td>${req.resource.category}</td>
-                            <td>${req.requestedQuantity}t</td>
-                            <td><span class="status-badge status-${req.status.toLowerCase()}">${req.status}</span></td>
-                        </tr>
-                    `;
-                });
-            }
-        } catch(e) { console.error(e); }
+    function updateMapRadius() {
+        if (leafletMapInstance) {
+            initLeafletMap();
+        }
     }
 
-    // NEW: Update Request Status
-    async function updateReqStatus(reqId, newStatus) {
+    async function loadDynamicTerms() {
         try {
-            const res = await fetch(`http://localhost:8080/api/requests/${reqId}/status`, {
+            const res = await fetch(`http://localhost:8080/api/companies/content/terms`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('termsTitleInput').value = data.title || '';
+                document.getElementById('termsContentInput').value = data.content || '';
+            }
+        } catch (e) {
+            console.error("Could not load terms", e);
+        }
+    }
+
+    async function saveTerms(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-terms');
+        const msg = document.getElementById('terms-msg');
+
+        btn.innerText = 'Saving...';
+        btn.disabled = true;
+        msg.innerText = '';
+
+        const payload = {
+            title: document.getElementById('termsTitleInput').value,
+            content: document.getElementById('termsContentInput').value
+        };
+
+        try {
+            const res = await fetch(`http://localhost:8080/api/companies/content/terms`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                msg.style.color = '#10b981';
+                msg.innerText = 'Terms & Conditions updated successfully!';
+            } else {
+                throw new Error('Failed to save terms');
+            }
+        } catch (error) {
+            msg.style.color = '#ef4444';
+            msg.innerText = 'Error saving terms.';
+        } finally {
+            btn.innerText = 'Save Terms';
+            btn.disabled = false;
+        }
+    }
+
+    async function loadCompanyProfile() {
+        try {
+            const res = await fetch(`http://localhost:8080/api/companies/${companyId}`, { headers: { 'Authorization': `Bearer ${token}` }});
+            if(res.ok) {
+                const data = await res.json();
+                document.getElementById('setCompanyName').value = data.companyName || companyName;
+                document.getElementById('setIndustry').value = data.industryType || '';
+                document.getElementById('setDesc').value = data.description || '';
+                document.getElementById('setWebsite').value = data.website || '';
+                document.getElementById('setTaxId').value = data.taxId || '';
+
+                if(data.defaultSearchRadius) document.getElementById('setSearchRadius').value = data.defaultSearchRadius;
+                if(data.preferredUnit) document.getElementById('setPreferredUnit').value = data.preferredUnit;
+
+                if(data.verificationStatus === "DOCUMENT_UNDER_REVIEW") {
+                    document.getElementById('verificationStatusText').innerText = "Document Under Review";
+                    document.getElementById('verificationDescText').innerText = "Your document has been uploaded successfully and is pending admin approval.";
+                }
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function saveCompanySettings(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-company');
+        const originalText = btn.innerText;
+        btn.innerText = 'Saving...'; btn.disabled = true;
+
+        const updates = {
+            companyName: document.getElementById('setCompanyName').value,
+            industryType: document.getElementById('setIndustry').value,
+            description: document.getElementById('setDesc').value,
+            website: document.getElementById('setWebsite').value,
+            taxId: document.getElementById('setTaxId').value
+        };
+
+        try {
+            const res = await fetch(`http://localhost:8080/api/companies/${companyId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ status: newStatus })
+                body: JSON.stringify(updates)
             });
-            if(res.ok) {
-                fetchRequests(); // Refresh the tables
-                loadDashboardKPIs(); // Refresh KPIs
-            }
-        } catch(e) { console.error(e); }
-    }
 
-    async function loadDashboardKPIs() {
-        if (!companyId) return;
-        try {
-            const response = await fetch(`http://localhost:8080/api/dashboard/${companyId}/stats`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const stats = await response.json();
-                document.getElementById('kpi-waste').innerText = stats.totalWasteListed || 0;
-                document.getElementById('kpi-req').innerText = stats.activeRequirements || 0;
-                document.getElementById('kpi-matches').innerText = stats.successfulMatches || 0;
-                document.getElementById('kpi-pending').innerText = stats.pendingRequests || 0;
+            if (res.ok) {
+                if (updates.companyName) {
+                    localStorage.setItem('companyName', updates.companyName);
+                    document.getElementById('dashCompanyName').innerText = updates.companyName;
+                }
+                btn.innerText = 'Saved Successfully';
+                btn.classList.replace('btn-primary', 'btn-success');
             }
         } catch (error) { console.error(error); }
+        finally {
+            setTimeout(() => { btn.innerText = originalText; btn.classList.replace('btn-success', 'btn-primary'); btn.disabled = false; }, 2000);
+        }
     }
 
-    function exportPDF() {
-        const element = document.getElementById('matchesContainer');
-        const opt = { margin: 0.5, filename: 'ReNode_Report.pdf', html2canvas: { scale: 2, backgroundColor: '#0b0f19' }, jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' } };
-        html2pdf().set(opt).from(element).save();
-    }
-
-    function logout() {
-        localStorage.clear();
-        window.location.href = 'index.html';
-    }
-
-    document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+    async function saveMarketPreferences(e) {
         e.preventDefault();
-        const updates = {};
-        if(document.getElementById('editCompName').value) updates.companyName = document.getElementById('editCompName').value;
-        if(document.getElementById('editIndustry').value) updates.industryType = document.getElementById('editIndustry').value;
+        const btn = document.getElementById('btn-save-market');
+        const originalText = btn.innerText;
+        btn.innerText = 'Saving...'; btn.disabled = true;
+
+        const updates = {
+            defaultSearchRadius: document.getElementById('setSearchRadius').value,
+            preferredUnit: document.getElementById('setPreferredUnit').value
+        };
 
         try {
             const res = await fetch(`http://localhost:8080/api/companies/${companyId}`, {
@@ -653,15 +856,369 @@
                 body: JSON.stringify(updates)
             });
             if (res.ok) {
-                document.getElementById('editProfileModal').style.display = 'none';
-                if(updates.companyName) {
-                    localStorage.setItem('companyName', updates.companyName);
-                    document.getElementById('dashCompanyName').innerText = updates.companyName;
-                }
-                alert("Profile updated successfully!");
+                btn.innerText = 'Saved Successfully';
+                btn.classList.replace('btn-primary', 'btn-success');
             }
         } catch (error) { console.error(error); }
-    });
+        finally {
+            setTimeout(() => { btn.innerText = originalText; btn.classList.replace('btn-success', 'btn-primary'); btn.disabled = false; }, 2000);
+        }
+    }
+
+    async function uploadDocument(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById('complianceDoc');
+        const btn = document.getElementById('btn-upload-doc');
+        const msg = document.getElementById('upload-msg');
+
+        if (fileInput.files.length === 0) return;
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        btn.innerText = 'Uploading...'; btn.disabled = true; msg.innerText = '';
+
+        try {
+            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/upload-document`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            if (res.ok) {
+                msg.style.color = '#10b981';
+                msg.innerText = 'Document uploaded successfully! Verification pending.';
+                document.getElementById('verificationStatusText').innerText = "Document Under Review";
+                document.getElementById('verificationDescText').innerText = "Your document has been uploaded successfully and is pending admin approval.";
+                fileInput.value = '';
+            } else {
+                throw new Error('Upload failed');
+            }
+        } catch (error) {
+            msg.style.color = '#ef4444';
+            msg.innerText = 'Error uploading document. Please try again.';
+        } finally {
+            btn.innerText = 'Upload Document'; btn.disabled = false;
+        }
+    }
+
+    async function saveNotifications(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-notif');
+        const originalText = btn.innerText;
+        btn.innerText = 'Saving...'; btn.disabled = true;
+
+        const payload = {
+            notifyMatches: document.getElementById('notif-match').checked,
+            notifyRequests: document.getElementById('notif-req').checked,
+            notifyDigest: document.getElementById('notif-digest').checked
+        };
+
+        try {
+            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/notifications`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                btn.innerText = 'Saved Successfully';
+                btn.classList.replace('btn-primary', 'btn-success');
+            }
+        } catch (error) { console.error(error); }
+        finally {
+            setTimeout(() => { btn.innerText = originalText; btn.classList.replace('btn-success', 'btn-primary'); btn.disabled = false; }, 2000);
+        }
+    }
+
+    async function updatePassword(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-update-pwd');
+        const msg = document.getElementById('password-msg');
+
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+
+        btn.innerText = 'Updating...'; btn.disabled = true; msg.innerText = '';
+
+        try {
+            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/password`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+
+            if (res.ok) {
+                msg.style.color = '#10b981';
+                msg.innerText = 'Password successfully updated!';
+                document.getElementById('currentPassword').value = '';
+                document.getElementById('newPassword').value = '';
+            } else if (res.status === 401) {
+                msg.style.color = '#ef4444';
+                msg.innerText = 'Incorrect current password. Please try again.';
+            } else { throw new Error('Failed to update password'); }
+        } catch (error) {
+            msg.style.color = '#ef4444';
+            msg.innerText = 'Server error. Could not update password.';
+        } finally {
+            btn.innerText = 'Update Password'; btn.disabled = false;
+        }
+    }
+
+    async function saveIntegrations(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-int');
+        const msg = document.getElementById('int-msg');
+
+        btn.innerText = 'Connecting...';
+        btn.disabled = true;
+        msg.innerText = '';
+
+        const payload = {
+            integrationProvider: document.getElementById('intProvider').value,
+            apiKey: document.getElementById('intApiKey').value,
+            webhookUrl: document.getElementById('intWebhook').value
+        };
+
+        try {
+            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/integrations`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                msg.style.color = '#10b981';
+                msg.innerText = 'Integration configured successfully!';
+            } else {
+                throw new Error('Failed to save integration');
+            }
+        } catch (error) {
+            msg.style.color = '#ef4444';
+            msg.innerText = 'Error saving integration settings.';
+        } finally {
+            btn.innerText = 'Save & Connect';
+            btn.disabled = false;
+        }
+    }
+
+    async function loadAllData() {
+        loadDashboardStats();
+        loadInventory();
+        loadMatches();
+        loadTransactions();
+    }
+
+    async function loadDashboardStats() {
+        try {
+            const res = await fetch(`http://localhost:8080/api/dashboard/${companyId}/stats`, { headers: { 'Authorization': `Bearer ${token}` }});
+            if(res.ok) {
+                const stats = await res.json();
+                document.getElementById('kpi-waste').innerText = stats.totalWasteListed || 0;
+                document.getElementById('kpi-req').innerText = stats.activeRequirements || 0;
+                document.getElementById('kpi-matches').innerText = stats.successfulMatches || 0;
+                document.getElementById('kpi-pending').innerText = stats.pendingRequests || 0;
+                document.getElementById('susTons').innerText = stats.sustainabilityTons || 0;
+                document.getElementById('susCO2').innerText = stats.sustainabilityCO2 || 0;
+                document.getElementById('susSavings').innerText = `₹${(stats.sustainabilityTons * 1250).toLocaleString()}`;
+                renderActionCenter(stats.recentActivity);
+            }
+        } catch (e) { console.error("Error loading stats", e); }
+    }
+
+    function renderActionCenter(activity) {
+        const list = document.getElementById('actionList');
+        const empty = document.getElementById('actionEmpty');
+
+        if(!activity || activity.length === 0) {
+            list.innerHTML = '';
+            empty.style.display = 'block';
+        } else {
+            empty.style.display = 'none';
+            list.innerHTML = activity.map(req => {
+                const isPending = req.status === 'PENDING';
+                const icon = isPending ? '<i class="ph ph-warning-circle"></i>' : '<i class="ph ph-check"></i>';
+                const bg = isPending ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)';
+                const color = isPending ? '#f59e0b' : '#10b981';
+
+                return `
+                <div class="activity-item">
+                    <div class="activity-icon" style="background: ${bg}; color: ${color};">${icon}</div>
+                    <div style="background: rgba(15, 23, 42, 0.5); padding: 12px; border-radius: 8px; flex: 1; border: 1px solid rgba(51, 65, 85, 0.4);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <strong style="color: var(--text-main); font-size: 13px;">${req.sender.companyName}</strong>
+                            <span style="font-size: 10px; color: var(--text-muted);">${req.status}</span>
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Requested ${req.requestedQuantity}t of ${req.resource.category}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+    }
+
+    async function loadInventory() {
+        try {
+            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/resources`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const data = await res.json();
+            updateCharts(data);
+
+            const tbody = document.getElementById('inventoryTableBody');
+            if(data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="display: table-cell;">
+                    <i class="ph ph-archive empty-icon"></i><h4>Inventory Empty</h4><p style="font-size: 12px; color: var(--text-muted);">Start listing your industrial waste or requirements.</p>
+                </td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map(item => {
+                const badge = item.listingType === 'WASTE' ? 'badge-waste' : 'badge-req';
+                return `<tr>
+                    <td><span class="${badge}">${item.listingType}</span></td>
+                    <td style="color: var(--text-main); font-weight: 500;">
+                        ${item.category}
+                        <div style="font-size: 11px; color: var(--text-muted); font-weight: 400;">${item.description || 'No specs provided'}</div>
+                    </td>
+                    <td>${item.quantityInTons}</td>
+                    <td style="color: var(--text-muted);">N/A</td>
+                    <td><span style="color: var(--accent-green); font-size: 11px;"><i class="ph ph-check-circle"></i> Active</span></td>
+                    <td><button class="btn btn-outline btn-sm" onclick="openResourceModal('${item.listingType}', ${item.id}, '${item.category}', ${item.quantityInTons}, '${item.description || ''}')"><i class="ph ph-pencil-simple"></i> Edit</button></td>
+                </tr>`;
+            }).join('');
+        } catch(e) { console.error(e); }
+    }
+
+    async function loadMatches() {
+        const radius = document.getElementById('matchRadius').value;
+        try {
+            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/matches?radius=${radius}`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const matches = await res.json();
+
+            const dashList = document.getElementById('matchesList');
+            const dashEmpty = document.getElementById('matchesEmpty');
+
+            if(matches.length === 0) {
+                dashEmpty.style.display = 'block';
+                dashList.innerHTML = '';
+                document.getElementById('fullMatchesContainer').innerHTML = `<div class="empty-state" style="display: block; grid-column: 1/-1;"><i class="ph ph-magnifying-glass empty-icon"></i><h4>No Network Matches</h4></div>`;
+            } else {
+                dashEmpty.style.display = 'none';
+                dashList.innerHTML = matches.slice(0, 3).map(m => `
+                    <div class="match-item">
+                        <div>
+                            <div style="color: var(--text-main); font-size: 13px; font-weight: 600; margin-bottom: 2px;">${m.matchedCompany.companyName}</div>
+                            <div style="color: var(--text-muted); font-size: 11px;">Match: ${m.matchedCategory} • Dist: ${m.distanceKm.toFixed(1)}km</div>
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="switchTab('matches')">Review</button>
+                    </div>
+                `).join('');
+
+                document.getElementById('fullMatchesContainer').innerHTML = matches.map(m => {
+                    const reqStr = m.matchedResourceType === 'WASTE' ? 'Supply Available' : 'Demand Requirement';
+                    return `
+                    <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                <div><h4 style="color: var(--text-main); font-size: 16px;">${m.matchedCompany.companyName}</h4><div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;"><i class="ph ph-map-pin"></i> ${m.distanceKm.toFixed(1)} km Radius</div></div>
+                                <span class="match-score">${m.matchScore}% Match</span>
+                            </div>
+                            <div style="background: rgba(15, 23, 42, 0.5); padding: 12px; border-radius: 8px; border: 1px dashed rgba(51, 65, 85, 0.7); margin-bottom: 15px;">
+                                <div style="font-size: 10px; color: var(--accent-cyan); text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">${reqStr}</div>
+                                <div style="font-size: 18px; color: var(--text-main); font-weight: 600;">${m.matchedQuantity}t <span style="font-size: 14px; font-weight: 400; color: var(--text-muted);">of ${m.matchedCategory}</span></div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;"><button class="btn btn-primary" style="flex: 1;" onclick="sendRequest(${m.matchedCompany.id}, ${m.matchedResourceId || 1}, ${m.matchedQuantity})">Initiate Deal</button></div>
+                    </div>`;
+                }).join('');
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    async function loadTransactions() {
+        try {
+            const inRes = await fetch(`http://localhost:8080/api/requests/incoming/${companyId}`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const incoming = await inRes.json();
+            const inBody = document.getElementById('incomingReqBody');
+
+            if(incoming.length === 0) inBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Pipeline empty.</td></tr>';
+            else {
+                inBody.innerHTML = incoming.map(req => {
+                    let actions = '-';
+                    if(req.status === 'PENDING') actions = `<button class="btn btn-primary btn-sm" onclick="updateReqStatus(${req.id}, 'ACCEPTED')">Accept</button> <button class="btn btn-outline btn-sm" onclick="updateReqStatus(${req.id}, 'REJECTED')">Decline</button>`;
+                    else if(req.status === 'ACCEPTED') actions = `<button class="btn btn-success btn-sm" onclick="updateReqStatus(${req.id}, 'COMPLETED')"><i class="ph ph-check-circle"></i> Verify</button>`;
+                    const badgeClass = req.status === 'PENDING' ? 'status-pending' : (req.status === 'COMPLETED' ? 'status-completed' : 'status-accepted');
+                    return `<tr><td style="color: var(--text-main); font-weight: 600;">${req.sender.companyName}</td><td>${req.resource.category}</td><td>${req.requestedQuantity}t</td><td><span class="badge-waste ${badgeClass}">${req.status}</span></td><td style="display: flex; gap: 8px;">${actions}</td></tr>`;
+                }).join('');
+            }
+
+            const outRes = await fetch(`http://localhost:8080/api/requests/outgoing/${companyId}`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const outgoing = await outRes.json();
+            const outBody = document.getElementById('outgoingReqBody');
+
+            if(outgoing.length === 0) outBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Pipeline empty.</td></tr>';
+            else {
+                outBody.innerHTML = outgoing.map(req => {
+                    const badgeClass = req.status === 'PENDING' ? 'status-pending' : (req.status === 'COMPLETED' ? 'status-completed' : 'status-accepted');
+                    return `<tr><td style="color: var(--text-main); font-weight: 600;">${req.receiver.companyName}</td><td>${req.resource.category}</td><td>${req.requestedQuantity}t</td><td><span class="badge-waste ${badgeClass}">${req.status}</span></td></tr>`;
+                }).join('');
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    async function sendRequest(receiverId, resourceId, qty) {
+        if(confirm("Confirm transaction initiation?")) {
+            await fetch(`http://localhost:8080/api/requests/send`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ senderId: companyId, receiverId: receiverId, resourceId: resourceId, requestedQuantity: qty }) });
+            loadAllData();
+            switchTab('transactions');
+        }
+    }
+
+    async function updateReqStatus(reqId, newStatus) {
+        await fetch(`http://localhost:8080/api/requests/${reqId}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ status: newStatus }) });
+        loadAllData();
+    }
+
+    function openResourceModal(type, id = null, cat = '', qty = '', desc = '') {
+        document.getElementById('resId').value = id || '';
+        document.getElementById('resType').value = type;
+        document.getElementById('resCategory').value = cat;
+        document.getElementById('resQuantity').value = qty;
+        document.getElementById('resDesc').value = desc;
+        document.getElementById('resModalTitle').innerText = id ? 'Edit Inventory' : 'Add New Inventory';
+        document.getElementById('resourceModal').style.display = 'flex';
+    }
+
+    async function saveResource(e) {
+        e.preventDefault();
+        const id = document.getElementById('resId').value;
+        const payload = { listingType: document.getElementById('resType').value, category: document.getElementById('resCategory').value, quantityInTons: document.getElementById('resQuantity').value, description: document.getElementById('resDesc').value };
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `http://localhost:8080/api/companies/${companyId}/resources/${id}` : `http://localhost:8080/api/companies/${companyId}/resources`;
+        await fetch(url, { method: method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
+        document.getElementById('resourceModal').style.display = 'none';
+        loadAllData();
+    }
+
+    function filterInventory() {
+        const search = document.getElementById('tableSearch').value.toLowerCase();
+        const type = document.getElementById('tableTypeFilter').value;
+        document.querySelectorAll('#inventoryTableBody tr').forEach(row => {
+            if(row.cells.length < 6) return;
+            const rowType = row.cells[0].innerText.toUpperCase();
+            const rowCat = row.cells[1].innerText.toLowerCase();
+            row.style.display = (rowCat.includes(search) && (type === 'ALL' || rowType.includes(type))) ? '' : 'none';
+        });
+    }
+
+    function updateCharts(resources) {
+        Chart.defaults.color = '#94a3b8'; Chart.defaults.font.family = 'Inter';
+        let wCount = 0, rCount = 0, wVol = 0, rVol = 0;
+        resources.forEach(r => { if(r.listingType === 'WASTE') { wCount++; wVol+=r.quantityInTons; } else { rCount++; rVol+=r.quantityInTons; }});
+        if(chartType) chartType.destroy();
+        chartType = new Chart(document.getElementById('typeChart'), { type: 'doughnut', data: { labels: ['Supply', 'Demand'], datasets: [{ data: [wCount, rCount], backgroundColor: ['#ef4444', '#3b82f6'], borderColor: '#070b14', borderWidth: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }});
+        if(chartVol) chartVol.destroy();
+        chartVol = new Chart(document.getElementById('volumeChart'), { type: 'bar', data: { labels: ['Supply (T)', 'Demand (T)'], datasets: [{ data: [wVol, rVol], backgroundColor: ['rgba(239, 68, 68, 0.8)', 'rgba(59, 130, 246, 0.8)'], borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }});
+    }
+
+    function logout() { localStorage.clear(); window.location.href = 'index.html'; }
 </script>
 </body>
 </html>

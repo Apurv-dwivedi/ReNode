@@ -22,20 +22,37 @@ public class Company {
     private String companyName;
 
     @Column(name = "industry_type")
-    private String industryType; // e.g., "Cement", "Textile"
+    private String industryType;
 
     @Column(name = "contact_email", unique = true, nullable = false)
     private String contactEmail;
 
-    // Purani companies ke liye null chalega, naye registration me password hoga
     @Column(nullable = true)
     private String password;
 
-    // MySQL me spatial data store karne ke liye
+    // --- Settings Module Fields ---
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    private String website;
+
+    private String taxId;
+
+    // For Verification Tab
+    private String verificationStatus;
+
+    // For Marketplace Preferences Tab
+    private Integer defaultSearchRadius;
+    private String preferredUnit;
+    // --- Integrations Fields ---
+    private String integrationProvider; // e.g., "SAP", "Tally", "Custom ERP"
+    private String apiKey;
+    private String webhookUrl;
+    // -----------------------------
+
     @JsonIgnore
     @Column(columnDefinition = "POINT SRID 4326")
     private Point location;
-
 
     public String getPassword() {
         return password;

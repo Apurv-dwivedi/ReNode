@@ -196,4 +196,30 @@ input[type="range"] {
     }
     .top-analytics-bar .divider { display: none; }
     .top-analytics-bar > div { text-align: right !important; }
+
+    /* Settings Module Layout */
+    .settings-container { display: flex; gap: 30px; align-items: flex-start; }
+    .settings-sidebar { width: 240px; display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
+    .settings-nav-item { padding: 12px 15px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+    .settings-nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-main); }
+    .settings-nav-item.active { background: rgba(56, 189, 248, 0.1); color: var(--accent-cyan); border-color: rgba(56, 189, 248, 0.2); }
+    .settings-content { flex: 1; background: var(--bg-card); backdrop-filter: var(--glass-blur); border: 1px solid var(--border-light); border-radius: 12px; padding: 30px; min-height: 500px; }
+    .settings-section { display: none; animation: fadeIn 0.3s ease; }
+    .settings-section.active { display: block; }
+
+    .settings-header { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid var(--border-light); }
+    .settings-header h3 { font-size: 18px; color: var(--text-main); margin-bottom: 5px; }
+    .settings-header p { font-size: 12px; color: var(--text-muted); }
+
+    .mobile-settings-nav { display: none; width: 100%; background: #0f172a; color: white; padding: 12px; border: 1px solid #334155; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+    .api-pending-badge { background: rgba(245, 158, 11, 0.15); color: #f59e0b; padding: 3px 8px; border-radius: 12px; font-size: 9px; font-weight: 700; text-transform: uppercase; border: 1px solid rgba(245, 158, 11, 0.3); margin-left: 10px; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 768px) {
+        .settings-container { flex-direction: column; }
+        .settings-sidebar { display: none; }
+        .mobile-settings-nav { display: block; }
+        .settings-content { width: 100%; padding: 20px; }
+    }
 }
