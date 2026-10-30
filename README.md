@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="images/renode.webp" alt="ReNode Logo" width="80" height="80" style="border-radius: 16px; box-shadow: 0 4px 20px rgba(56, 189, 248, 0.3);">
+  <img src="renode.webp" alt="ReNode Logo" width="80" height="80" style="border-radius: 16px; box-shadow: 0 4px 20px rgba(56, 189, 248, 0.3);">
   <h1 style="font-family: 'Montserrat', sans-serif; font-weight: 800; background: linear-gradient(135deg, #38bdf8, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">ReNode</h1>
   <p><strong>Full-Stack B2B Industrial Waste Exchange & Circular Economy Platform</strong></p>
 </div>
