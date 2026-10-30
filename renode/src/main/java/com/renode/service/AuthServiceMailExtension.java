@@ -40,7 +40,7 @@ public class AuthServiceMailExtension {
                 "</div>";
 
         emailDispatcherService.queueEmail(
-                company.getEmail(),
+                company.getContactEmail(),
                 "Verify Your ReNode Account",
                 htmlBody,
                 "Please verify your email using this link: " + verifyLink
@@ -66,7 +66,7 @@ public class AuthServiceMailExtension {
                 "</div>";
 
         emailDispatcherService.queueEmail(
-                company.getEmail(),
+                company.getContactEmail(),
                 "Password Reset - ReNode",
                 htmlBody,
                 "Reset your password using this link: " + resetLink

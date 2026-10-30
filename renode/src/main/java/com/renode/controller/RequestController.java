@@ -1,12 +1,13 @@
 package com.renode.controller;
 
+import com.renode.entity.TradeMessage;
+import com.renode.entity.TradeRequest;
 import com.renode.entity.Company;
-import com.renode.entity.RequestStatus;
-import com.renode.entity.ResourceListing; // EXACT NAME IMPORTED
-import com.renode.entity.ResourceRequest;
+import com.renode.entity.ResourceListing;
+import com.renode.repository.TradeMessageRepository;
+import com.renode.repository.TradeRequestRepository;
 import com.renode.repository.CompanyRepository;
-import com.renode.repository.ResourceListingRepository; // EXACT REPO IMPORTED
-import com.renode.repository.ResourceRequestRepository;
+import com.renode.repository.ResourceListingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,70 +22,97 @@ import java.util.Map;
 public class RequestController {
 
     @Autowired
-    private ResourceRequestRepository requestRepository;
+    private TradeRequestRepository tradeRequestRepository;
+
+    @Autowired
+    private TradeMessageRepository tradeMessageRepository;
 
     @Autowired
     private CompanyRepository companyRepository;
 
     @Autowired
-    private ResourceListingRepository resourceRepository; // UPDATED HERE
+    private ResourceListingRepository resourceListingRepository;
 
-    // 1. Send a new request
+    // Send Deal / Trade Request
     @PostMapping("/send")
     public ResponseEntity<?> sendRequest(@RequestBody Map<String, Object> payload) {
         try {
-            Integer senderId = Integer.parseInt(payload.get("senderId").toString());
-            Integer receiverId = Integer.parseInt(payload.get("receiverId").toString());
-            Integer resourceId = Integer.parseInt(payload.get("resourceId").toString());
-            Double qty = Double.parseDouble(payload.get("requestedQuantity").toString());
+            Integer senderId = Integer.parseInt(String.valueOf(payload.get("senderId")));
+            Integer receiverId = Integer.parseInt(String.valueOf(payload.get("receiverId")));
+            Integer resourceId = Integer.parseInt(String.valueOf(payload.get("resourceId")));
+            Double qty = Double.parseDouble(String.valueOf(payload.get("requestedQuantity")));
 
-            Company sender = companyRepository.findById(senderId).orElseThrow();
-            Company receiver = companyRepository.findById(receiverId).orElseThrow();
-            ResourceListing resource = resourceRepository.findById(resourceId).orElseThrow(); // UPDATED HERE
+            Company sender = companyRepository.findById(senderId).orElseThrow(() -> new RuntimeException("Sender not found"));
+            Company receiver = companyRepository.findById(receiverId).orElseThrow(() -> new RuntimeException("Receiver not found"));
+            ResourceListing resource = resourceListingRepository.findById(resourceId).orElseThrow(() -> new RuntimeException("Resource not found"));
 
-            ResourceRequest request = new ResourceRequest();
+            TradeRequest request = new TradeRequest();
             request.setSender(sender);
             request.setReceiver(receiver);
             request.setResource(resource);
             request.setRequestedQuantity(qty);
+            request.setStatus("PENDING");
 
-            requestRepository.save(request);
+            tradeRequestRepository.save(request);
 
             Map<String, String> response = new HashMap<>();
-            response.put("message", "Request sent successfully");
+            response.put("message", "Trade request sent successfully!");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Failed to send request: " + e.getMessage());
+            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
         }
     }
 
-    // 2. Get incoming requests for a company
+    // Get Incoming Requests for a Company
     @GetMapping("/incoming/{companyId}")
-    public ResponseEntity<List<ResourceRequest>> getIncomingRequests(@PathVariable Integer companyId) {
-        return ResponseEntity.ok(requestRepository.findByReceiverIdOrderByCreatedAtDesc(companyId));
+    public List<TradeRequest> getIncomingRequests(@PathVariable Integer companyId) {
+        return tradeRequestRepository.findByReceiverId(companyId);
     }
 
-    // 3. Get outgoing requests for a company
+    // Get Outgoing Requests by a Company
     @GetMapping("/outgoing/{companyId}")
-    public ResponseEntity<List<ResourceRequest>> getOutgoingRequests(@PathVariable Integer companyId) {
-        return ResponseEntity.ok(requestRepository.findBySenderIdOrderByCreatedAtDesc(companyId));
+    public List<TradeRequest> getOutgoingRequests(@PathVariable Integer companyId) {
+        return tradeRequestRepository.findBySenderId(companyId);
     }
 
-    // 4. Update request status (Accept/Reject/Complete)
-    @PutMapping("/{requestId}/status")
-    public ResponseEntity<?> updateStatus(@PathVariable Integer requestId, @RequestBody Map<String, String> payload) {
+    @PostMapping("/{requestId}/messages")
+    public ResponseEntity<?> sendTradeMessage(@PathVariable Integer requestId, @RequestBody Map<String, Object> payload) {
         try {
-            ResourceRequest request = requestRepository.findById(requestId).orElseThrow();
-            RequestStatus newStatus = RequestStatus.valueOf(payload.get("status").toUpperCase());
+            Integer companyId = Integer.parseInt(String.valueOf(payload.get("companyId")));
+            String content = String.valueOf(payload.get("messageContent"));
 
-            request.setStatus(newStatus);
-            requestRepository.save(request);
+            TradeRequest request = tradeRequestRepository.findById(requestId)
+                    .orElseThrow(() -> new RuntimeException("Trade request not found"));
+            Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new RuntimeException("Company not found"));
 
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Status updated to " + newStatus);
-            return ResponseEntity.ok(response);
+            TradeMessage msg = new TradeMessage();
+            msg.setTradeRequest(request);
+            msg.setSenderCompany(company);
+            msg.setMessageContent(content);
+
+            tradeMessageRepository.save(msg);
+            return ResponseEntity.ok(Map.of("message", "Message sent successfully"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Failed to update status");
+            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
         }
+    }
+
+    // Update Request Status (Accept, Reject, Complete)
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateStatus(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
+        TradeRequest request = tradeRequestRepository.findById(id).orElseThrow(() -> new RuntimeException("Request not found"));
+        String newStatus = payload.get("status");
+
+        if (newStatus != null) {
+            request.setStatus(newStatus);
+            tradeRequestRepository.save(request);
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Request status updated to " + newStatus));
+    }
+    @GetMapping("/{requestId}/messages")
+    public List<TradeMessage> getTradeMessages(@PathVariable Integer requestId) {
+        return tradeMessageRepository.findByTradeRequestId(requestId);
     }
 }

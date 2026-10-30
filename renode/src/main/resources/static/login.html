@@ -74,6 +74,7 @@
             color: #3b82f6;
             text-decoration: none;
             font-weight: 500;
+            cursor: pointer;
         }
 
         .forgot-link:hover {
@@ -193,7 +194,7 @@
         <div class="input-group">
             <div class="label-row">
                 <label for="password">Password</label>
-                <a href="#" class="forgot-link" onclick="handleForgot()">Forgot password?</a>
+                <a class="forgot-link" onclick="handleForgot()">Forgot password?</a>
             </div>
             <div class="input-wrapper">
                 <input type="password" id="password" placeholder="••••••••" required>
@@ -238,12 +239,31 @@
         setTimeout(() => { toast.classList.remove('show'); }, 3500);
     }
 
-    function handleForgot() {
+    // 🌟 Updated Forgot Password Backend Integration
+    async function handleForgot() {
         const emailVal = document.getElementById('email').value;
         if(!emailVal) {
             showToast("Please enter your email first to reset password.", "error");
-        } else {
-            showToast(`Password reset link sent to ${emailVal}!`, "info");
+            return;
+        }
+
+        try {
+            showToast("Sending reset instructions...", "info");
+            const response = await fetch('http://localhost:8080/api/companies/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: emailVal })
+            });
+
+            if(response.ok) {
+                const data = await response.json();
+                showToast(data.message || "Password reset link sent if account exists.", "success");
+            } else {
+                showToast("Could not process request. Please try again.", "error");
+            }
+        } catch (error) {
+            console.error("Forgot password error:", error);
+            showToast("Server connection error.", "error");
         }
     }
 
@@ -272,12 +292,10 @@
             if (response.ok) {
                 const data = await response.json();
 
-                // Backend se mila hua JWT token aur data save kar lo
                 localStorage.setItem("companyId", data.companyId);
                 localStorage.setItem("companyName", data.companyName);
                 localStorage.setItem("jwt_token", data.token);
 
-                // Syntax error theek kiya: Smooth toast dikhao aur fir redirect karo
                 showToast("Login Successful! Redirecting...", "success");
 
                 setTimeout(() => {

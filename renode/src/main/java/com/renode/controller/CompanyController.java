@@ -2,6 +2,7 @@ package com.renode.controller;
 
 import com.renode.entity.TermsContent;
 import com.renode.repository.CompanyRepository;
+import com.renode.service.AuthServiceMailExtension;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/companies")
@@ -52,6 +54,9 @@ public class CompanyController {
     @Autowired
     private com.renode.repository.TermsRepository termsRepository;
 
+    @Autowired
+    private AuthServiceMailExtension authServiceMailExtension;
+
     @GetMapping("/content/terms")
     public ResponseEntity<?> getTermsContent() {
         TermsContent terms = termsRepository.findTopByOrderByIdDesc();
@@ -64,7 +69,7 @@ public class CompanyController {
         return ResponseEntity.ok(terms);
     }
 
-    // --- NAYA: UPDATE TERMS & CONDITIONS API ---
+    // --- UPDATE TERMS & CONDITIONS API ---
     @PutMapping("/content/terms")
     public ResponseEntity<?> updateTermsContent(@RequestBody TermsContent newTerms) {
         try {
@@ -101,7 +106,7 @@ public class CompanyController {
         return matchmakingService.findMatchesForCompany(id, radius);
     }
 
-    // NAYA: Fetch specific company profile for Settings Tab
+    // Fetch specific company profile for Settings Tab
     @GetMapping("/{id}")
     public ResponseEntity<?> getCompanyProfile(@PathVariable Integer id) {
         Company company = companyRepository.findById(id).orElse(null);
@@ -165,6 +170,7 @@ public class CompanyController {
             // Set Defaults for settings module
             company.setDefaultSearchRadius(50);
             company.setPreferredUnit("Metric Tons (t)");
+            company.setVerificationStatus("PENDING");
 
             if (payload.get("latitude") != null && payload.get("longitude") != null) {
                 double lat = Double.parseDouble(String.valueOf(payload.get("latitude")));
@@ -178,8 +184,16 @@ public class CompanyController {
 
             companyRepository.save(company);
 
+            // Queue verification email upon successful registration
+            try {
+                authServiceMailExtension.sendRegistrationVerificationEmail(company);
+            } catch (Exception mailEx) {
+                // Log mail exception but don't fail registration
+                System.err.println("Failed to queue verification email: " + mailEx.getMessage());
+            }
+
             Map<String, String> response = new HashMap<>();
-            response.put("message", "Factory Registered Successfully!");
+            response.put("message", "Factory Registered Successfully! Verification email queued.");
             return ResponseEntity.ok(response);
 
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
@@ -192,6 +206,22 @@ public class CompanyController {
             error.put("error", "Server Error: " + e.getMessage());
             return ResponseEntity.status(400).body(error);
         }
+    }
+
+    // --- FORGOT PASSWORD ENDPOINT ---
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        Optional<Company> companyOpt = companyRepository.findByContactEmail(email);
+
+        if (companyOpt.isPresent()) {
+            authServiceMailExtension.sendPasswordResetEmail(companyOpt.get());
+        }
+
+        // Secure generic response to prevent user enumeration
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "If an account with that email exists, a password reset link has been sent.");
+        return ResponseEntity.ok(response);
     }
 
     // --- LOGIN ENDPOINT ---
@@ -257,14 +287,12 @@ public class CompanyController {
             return ResponseEntity.status(404).body("Company not found!");
         }
 
-        // Company Profile fields
         if (updates.containsKey("companyName")) company.setCompanyName(updates.get("companyName"));
         if (updates.containsKey("industryType")) company.setIndustryType(updates.get("industryType"));
         if (updates.containsKey("description")) company.setDescription(updates.get("description"));
         if (updates.containsKey("website")) company.setWebsite(updates.get("website"));
         if (updates.containsKey("taxId")) company.setTaxId(updates.get("taxId"));
 
-        // Marketplace Preference fields
         if (updates.containsKey("defaultSearchRadius")) {
             company.setDefaultSearchRadius(Integer.parseInt(updates.get("defaultSearchRadius")));
         }
@@ -290,7 +318,7 @@ public class CompanyController {
         return ResponseEntity.ok(response);
     }
 
-    // --- NAYA: UPDATE PASSWORD (SECURITY TAB) ---
+    // --- UPDATE PASSWORD (SECURITY TAB) ---
     @PutMapping("/{id}/password")
     public ResponseEntity<?> updatePassword(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
         try {
@@ -302,14 +330,12 @@ public class CompanyController {
             String currentPassword = payload.get("currentPassword");
             String newPassword = payload.get("newPassword");
 
-            // Verify current password using BCrypt
             if (!passwordEncoder.matches(currentPassword, company.getPassword())) {
                 Map<String, String> error = new HashMap<>();
                 error.put("error", "Incorrect current password");
-                return ResponseEntity.status(401).body(error); // 401 Unauthorized
+                return ResponseEntity.status(401).body(error);
             }
 
-            // Hash and save new password
             company.setPassword(passwordEncoder.encode(newPassword));
             companyRepository.save(company);
 
@@ -323,7 +349,8 @@ public class CompanyController {
             return ResponseEntity.status(500).body(error);
         }
     }
-    // --- NAYA: COMPLIANCE DOCUMENT UPLOAD API ---
+
+    // --- COMPLIANCE DOCUMENT UPLOAD API ---
     @PostMapping("/{id}/upload-document")
     public ResponseEntity<?> uploadComplianceDocument(
             @PathVariable Integer id,
@@ -348,13 +375,14 @@ public class CompanyController {
         }
     }
 
-    // --- NAYA: NOTIFICATION PREFERENCES API ---
+    // --- NOTIFICATION PREFERENCES API ---
     @PutMapping("/{id}/notifications")
     public ResponseEntity<?> updateNotifications(@PathVariable Integer id, @RequestBody Map<String, Boolean> prefs) {
         Map<String, String> response = new HashMap<>();
         response.put("message", "Notification preferences saved securely.");
         return ResponseEntity.ok(response);
     }
+
     // --- SAVE INTEGRATION DETAILS ---
     @PutMapping("/{id}/integrations")
     public ResponseEntity<?> saveIntegrations(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
