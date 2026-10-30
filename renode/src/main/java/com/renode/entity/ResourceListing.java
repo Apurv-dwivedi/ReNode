@@ -36,11 +36,14 @@ public class ResourceListing {
     private String description;
 
     @Column(name = "target_price")
-    private Double targetPrice;
+    private Double targetPrice; // Yeh price per ton store karega
 
     @Column(name = "purity_specifications")
     private String puritySpecifications;
 
     @Column(name = "expiry_date")
     private LocalDate expiryDate;
+
+    @Column(name = "location")
+    private String location;
 }

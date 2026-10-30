@@ -102,7 +102,6 @@
         .form-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
         .form-control { background: #0f172a; color: white; padding: 12px; border: 1px solid #334155; border-radius: 8px; font-size: 13px; outline: none; transition: border 0.2s; }
         .form-control:focus { border-color: var(--accent-cyan); }
-        .form-control:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* Settings Module Layout */
         .settings-container { display: flex; gap: 30px; align-items: flex-start; }
@@ -122,7 +121,6 @@
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Responsive Breakpoints */
         @media (max-width: 1024px) {
             .layout-grid { grid-template-columns: 1fr; }
         }
@@ -332,7 +330,6 @@
             </div>
         </div>
 
-        <!-- Leaflet Map Container -->
         <div class="glass-card" style="padding: 0; overflow: hidden; height: 600px; border: 1px solid var(--border-light);">
             <div id="leafletMap" style="width: 100%; height: 100%; background: #070b14;"></div>
         </div>
@@ -351,7 +348,7 @@
         <div class="table-container">
             <table>
                 <thead><tr><th>Target Partner</th><th>Material Subject</th><th>Volume Requested</th><th>Pipeline Status</th></tr></thead>
-                <tbody id="outgoingReqBody"><tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">No active outgoing offers.</td></tr></tbody>
+                <tbody id="outgoingReqBody"><tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No active outgoing offers.</td></tr></tbody>
             </table>
         </div>
     </div>
@@ -359,7 +356,6 @@
     <!-- VIEW: SETTINGS -->
     <div id="view-settings" style="display: none;">
         <div class="settings-container">
-            <!-- Mobile Navigation -->
             <select class="mobile-settings-nav" id="mobileSettingsNav" onchange="switchSettingsTab(this.value)">
                 <option value="set-company">Company Profile</option>
                 <option value="set-verification">Verification & Compliance</option>
@@ -370,7 +366,6 @@
                 <option value="set-terms">Terms & Conditions</option>
             </select>
 
-            <!-- Desktop Navigation -->
             <div class="settings-sidebar" id="settingsSidebar">
                 <div class="settings-nav-item active" onclick="switchSettingsTab('set-company')" data-target="set-company">Company Profile</div>
                 <div class="settings-nav-item" onclick="switchSettingsTab('set-verification')" data-target="set-verification">Verification & Compliance</div>
@@ -381,10 +376,7 @@
                 <div class="settings-nav-item" onclick="switchSettingsTab('set-terms')" data-target="set-terms">Terms & Conditions</div>
             </div>
 
-            <!-- Settings Content Panels -->
             <div class="settings-content">
-
-                <!-- Company Profile -->
                 <div id="set-company" class="settings-section active">
                     <div class="settings-header">
                         <h3>Company Profile</h3>
@@ -419,13 +411,11 @@
                     </form>
                 </div>
 
-                <!-- Verification & Compliance -->
                 <div id="set-verification" class="settings-section">
                     <div class="settings-header">
                         <h3>Verification & Compliance</h3>
                         <p>Maintain your verified partner status to unlock high-volume deals.</p>
                     </div>
-
                     <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
                         <i class="ph ph-seal-check" style="font-size: 32px; color: var(--accent-green);"></i>
                         <div>
@@ -433,7 +423,6 @@
                             <p style="font-size: 12px; color: var(--text-muted);" id="verificationDescText">Your business identity has been verified. No pending actions required.</p>
                         </div>
                     </div>
-
                     <form onsubmit="uploadDocument(event)">
                         <div class="form-group" style="margin-bottom: 15px;">
                             <label class="form-label">Upload Compliance Document (e.g., Pollution Control Board NOC)</label>
@@ -444,7 +433,6 @@
                     </form>
                 </div>
 
-                <!-- Marketplace Preferences -->
                 <div id="set-market" class="settings-section">
                     <div class="settings-header">
                         <h3>Marketplace Preferences</h3>
@@ -470,7 +458,6 @@
                     </form>
                 </div>
 
-                <!-- Notifications -->
                 <div id="set-notifications" class="settings-section">
                     <div class="settings-header">
                         <h3>Notification Preferences</h3>
@@ -492,7 +479,6 @@
                     </form>
                 </div>
 
-                <!-- Security -->
                 <div id="set-security" class="settings-section">
                     <div class="settings-header">
                         <h3>Security & Access</h3>
@@ -514,7 +500,6 @@
                     </form>
                 </div>
 
-                <!-- Integrations -->
                 <div id="set-integration" class="settings-section">
                     <div class="settings-header">
                         <h3>Software Integrations</h3>
@@ -546,7 +531,6 @@
                     </form>
                 </div>
 
-                <!-- Terms & Conditions (EDITABLE) -->
                 <div id="set-terms" class="settings-section">
                     <div class="settings-header">
                         <h3>Terms & Conditions</h3>
@@ -567,7 +551,6 @@
                         </div>
                     </form>
                 </div>
-
             </div>
         </div>
     </div>
@@ -608,8 +591,8 @@
                     <input type="date" id="resExpiry" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Location Data</label>
-                    <input type="text" class="form-control" value="Sourced from Company Profile" disabled>
+                    <label class="form-label">Resource Location (City/Area)</label>
+                    <input type="text" id="resLocation" class="form-control" placeholder="Optional: Leave blank to use Company Profile location">
                 </div>
             </div>
             <div style="display: flex; gap: 15px; margin-top: 10px; justify-content: flex-end;">
@@ -1071,6 +1054,8 @@
 
             tbody.innerHTML = data.map(item => {
                 const badge = item.listingType === 'WASTE' ? 'badge-waste' : 'badge-req';
+                // 🌟 Using targetPrice mapped from backend entity
+                const displayPrice = item.targetPrice || item.pricePerUnit || item.price || '0';
                 return `<tr>
                     <td><span class="${badge}">${item.listingType}</span></td>
                     <td style="color: var(--text-main); font-weight: 500;">
@@ -1078,9 +1063,9 @@
                         <div style="font-size: 11px; color: var(--text-muted); font-weight: 400;">${item.description || 'No specs provided'}</div>
                     </td>
                     <td>${item.quantityInTons}</td>
-                    <td style="color: var(--text-muted);">N/A</td>
+                    <td style="color: var(--accent-cyan); font-weight: 600;">₹${displayPrice}</td>
                     <td><span style="color: var(--accent-green); font-size: 11px;"><i class="ph ph-check-circle"></i> Active</span></td>
-                    <td><button class="btn btn-outline btn-sm" onclick="openResourceModal('${item.listingType}', ${item.id}, '${item.category}', ${item.quantityInTons}, '${item.description || ''}')"><i class="ph ph-pencil-simple"></i> Edit</button></td>
+                    <td><button class="btn btn-outline btn-sm" onclick="openResourceModal('${item.listingType}', ${item.id}, '${item.category}', ${item.quantityInTons}, '${item.description || ''}', '${item.location || ''}', '${displayPrice}')"><i class="ph ph-pencil-simple"></i> Edit</button></td>
                 </tr>`;
             }).join('');
         } catch(e) { console.error(e); }
@@ -1176,12 +1161,14 @@
         loadAllData();
     }
 
-    function openResourceModal(type, id = null, cat = '', qty = '', desc = '') {
+    function openResourceModal(type, id = null, cat = '', qty = '', desc = '', location = '', price = '') {
         document.getElementById('resId').value = id || '';
         document.getElementById('resType').value = type;
         document.getElementById('resCategory').value = cat;
         document.getElementById('resQuantity').value = qty;
         document.getElementById('resDesc').value = desc;
+        document.getElementById('resLocation').value = location || '';
+        document.getElementById('resPrice').value = price || '';
         document.getElementById('resModalTitle').innerText = id ? 'Edit Inventory' : 'Add New Inventory';
         document.getElementById('resourceModal').style.display = 'flex';
     }
@@ -1189,7 +1176,14 @@
     async function saveResource(e) {
         e.preventDefault();
         const id = document.getElementById('resId').value;
-        const payload = { listingType: document.getElementById('resType').value, category: document.getElementById('resCategory').value, quantityInTons: document.getElementById('resQuantity').value, description: document.getElementById('resDesc').value };
+        const payload = {
+            listingType: document.getElementById('resType').value,
+            category: document.getElementById('resCategory').value,
+            quantityInTons: document.getElementById('resQuantity').value,
+            targetPrice: document.getElementById('resPrice').value || 0, // 🌟 Mapped to targetPrice
+            description: document.getElementById('resDesc').value,
+            location: document.getElementById('resLocation').value
+        };
         const method = id ? 'PUT' : 'POST';
         const url = id ? `http://localhost:8080/api/companies/${companyId}/resources/${id}` : `http://localhost:8080/api/companies/${companyId}/resources`;
         await fetch(url, { method: method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
