@@ -37,7 +37,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         // Root aur health check endpoints ko public allow karo
                         .requestMatchers("/", "/health").permitAll()
-                        // In 3 APIs ko public (bina login) allow karo: register, login, aur stats
+                        // In APIs ko public (bina login) allow karo: register, login, aur stats
                         .requestMatchers("/api/companies/register", "/api/companies/login", "/api/companies/stats").permitAll()
                         // Baaki saari APIs ke liye token zaruri hai
                         .anyRequest().authenticated()
@@ -65,6 +65,7 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
+
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
