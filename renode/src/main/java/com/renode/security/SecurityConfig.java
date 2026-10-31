@@ -35,13 +35,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // OPTIONS requests (browser preflight) ko allow karo
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        // Root aur health check endpoints ko public allow karo
+                        .requestMatchers("/", "/health").permitAll()
                         // In 3 APIs ko public (bina login) allow karo: register, login, aur stats
                         .requestMatchers("/api/companies/register", "/api/companies/login", "/api/companies/stats").permitAll()
                         // Baaki saari APIs ke liye token zaruri hai
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter, org.springframework.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
