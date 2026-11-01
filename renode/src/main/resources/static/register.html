@@ -179,8 +179,7 @@
                 longitude: lon
             };
 
-            const response = await fetch('http://localhost:8080/api/companies/register', {
-                method: 'POST',
+            const response = await fetch('https://aapka-live-backend-url.com/api/companies/register', {                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
