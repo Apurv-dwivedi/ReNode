@@ -683,7 +683,7 @@
 
         try {
             const radius = document.getElementById('mapRadiusSelect').value;
-            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/nearby?radius=${radius}`, {
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/companies/${companyId}/nearby?radius=${radius}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -712,7 +712,7 @@
 
     async function loadDynamicTerms() {
         try {
-            const res = await fetch(`http://localhost:8080/api/companies/content/terms`, {
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/companies/content/terms`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -740,7 +740,7 @@
         };
 
         try {
-            const res = await fetch(`http://localhost:8080/api/companies/content/terms`, {
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/companies/content/terms`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -766,7 +766,7 @@
 
     async function loadCompanyProfile() {
         try {
-            const res = await fetch(`http://localhost:8080/api/companies/${companyId}`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/companies/${companyId}`, { headers: { 'Authorization': `Bearer ${token}` }});
             if(res.ok) {
                 const data = await res.json();
                 document.getElementById('setCompanyName').value = data.companyName || companyName;
@@ -801,7 +801,7 @@
         };
 
         try {
-            const res = await fetch(`http://localhost:8080/api/companies/${companyId}`, {
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/companies/${companyId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(updates)
@@ -833,7 +833,7 @@
         };
 
         try {
-            const res = await fetch(`http://localhost:8080/api/companies/${companyId}`, {
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/companies/${companyId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(updates)
@@ -862,7 +862,7 @@
         btn.innerText = 'Uploading...'; btn.disabled = true; msg.innerText = '';
 
         try {
-            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/upload-document`, {
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/companies/${companyId}/upload-document`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
@@ -898,7 +898,7 @@
         };
 
         try {
-            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/notifications`, {
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/companies/${companyId}/notifications`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload)
@@ -924,7 +924,7 @@
         btn.innerText = 'Updating...'; btn.disabled = true; msg.innerText = '';
 
         try {
-            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/password`, {
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/companies/${companyId}/password`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ currentPassword, newPassword })
@@ -963,7 +963,7 @@
         };
 
         try {
-            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/integrations`, {
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/companies/${companyId}/integrations`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload)
@@ -993,7 +993,7 @@
 
     async function loadDashboardStats() {
         try {
-            const res = await fetch(`http://localhost:8080/api/dashboard/${companyId}/stats`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/dashboard/${companyId}/stats`, { headers: { 'Authorization': `Bearer ${token}` }});
             if(res.ok) {
                 const stats = await res.json();
                 document.getElementById('kpi-waste').innerText = stats.totalWasteListed || 0;
@@ -1040,7 +1040,7 @@
 
     async function loadInventory() {
         try {
-            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/resources`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/companies/${companyId}/resources`, { headers: { 'Authorization': `Bearer ${token}` }});
             const data = await res.json();
             updateCharts(data);
 
@@ -1074,7 +1074,7 @@
     async function loadMatches() {
         const radius = document.getElementById('matchRadius').value;
         try {
-            const res = await fetch(`http://localhost:8080/api/companies/${companyId}/matches?radius=${radius}`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const res = await fetch(`https://renode-1lbs.onrender.com/api/companies/${companyId}/matches?radius=${radius}`, { headers: { 'Authorization': `Bearer ${token}` }});
             const matches = await res.json();
 
             const dashList = document.getElementById('matchesList');
@@ -1119,7 +1119,7 @@
 
     async function loadTransactions() {
         try {
-            const inRes = await fetch(`http://localhost:8080/api/requests/incoming/${companyId}`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const inRes = await fetch(`https://renode-1lbs.onrender.com/api/requests/incoming/${companyId}`, { headers: { 'Authorization': `Bearer ${token}` }});
             const incoming = await inRes.json();
             const inBody = document.getElementById('incomingReqBody');
 
@@ -1134,7 +1134,7 @@
                 }).join('');
             }
 
-            const outRes = await fetch(`http://localhost:8080/api/requests/outgoing/${companyId}`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const outRes = await fetch(`https://renode-1lbs.onrender.com/api/requests/outgoing/${companyId}`, { headers: { 'Authorization': `Bearer ${token}` }});
             const outgoing = await outRes.json();
             const outBody = document.getElementById('outgoingReqBody');
 
@@ -1150,14 +1150,14 @@
 
     async function sendRequest(receiverId, resourceId, qty) {
         if(confirm("Confirm transaction initiation?")) {
-            await fetch(`http://localhost:8080/api/requests/send`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ senderId: companyId, receiverId: receiverId, resourceId: resourceId, requestedQuantity: qty }) });
+            await fetch(`https://renode-1lbs.onrender.com/api/requests/send`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ senderId: companyId, receiverId: receiverId, resourceId: resourceId, requestedQuantity: qty }) });
             loadAllData();
             switchTab('transactions');
         }
     }
 
     async function updateReqStatus(reqId, newStatus) {
-        await fetch(`http://localhost:8080/api/requests/${reqId}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ status: newStatus }) });
+        await fetch(`https://renode-1lbs.onrender.com/api/requests/${reqId}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ status: newStatus }) });
         loadAllData();
     }
 
@@ -1185,7 +1185,7 @@
             location: document.getElementById('resLocation').value
         };
         const method = id ? 'PUT' : 'POST';
-        const url = id ? `http://localhost:8080/api/companies/${companyId}/resources/${id}` : `http://localhost:8080/api/companies/${companyId}/resources`;
+        const url = id ? `https://renode-1lbs.onrender.com/api/companies/${companyId}/resources/${id}` : `https://renode-1lbs.onrender.com/api/companies/${companyId}/resources`;
         await fetch(url, { method: method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
         document.getElementById('resourceModal').style.display = 'none';
         loadAllData();

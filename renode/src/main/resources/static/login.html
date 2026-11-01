@@ -249,7 +249,7 @@
 
         try {
             showToast("Sending reset instructions...", "info");
-            const response = await fetch('http://localhost:8080/api/companies/forgot-password', {
+            const response = await fetch('https://renode-1lbs.onrender.com/api/companies/forgot-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: emailVal })
