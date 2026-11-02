@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class MatchmakingService {
@@ -24,78 +26,87 @@ public class MatchmakingService {
         Company sourceCompany = companyRepository.findById(companyId).orElse(null);
         List<MatchResponse> matches = new ArrayList<>();
 
-        if (sourceCompany == null) return matches;
+        // 🔒 FIX: Safely handle null source company or missing location
+        if (sourceCompany == null || sourceCompany.getLocation() == null) {
+            return matches;
+        }
 
-        // 1. Company ki apni listings nikaalo (Supply vs Demand)
         List<ResourceListing> myListings = resourceListingRepository.findByCompanyId(companyId);
-
-        // 2. Baaki saari companies ke listings fetch karo
         List<ResourceListing> allListings = resourceListingRepository.findAll();
 
+        // 🔒 FIX: Prevent duplicate matches if a company matches on multiple listings
+        Set<Integer> matchedListingIds = new HashSet<>();
+
         for (ResourceListing mine : myListings) {
+            // 🔒 FIX: Prevent NullPointerException on empty listings
+            if (mine.getListingType() == null || mine.getCategory() == null) continue;
+
             for (ResourceListing other : allListings) {
-                // Apni hi company ke listing ko match nahi karna
-                if (other.getCompany().getId().equals(companyId)) continue;
+                if (other.getCompany() == null || other.getCompany().getId().equals(companyId)) continue;
+                if (other.getListingType() == null || other.getCategory() == null) continue;
+                if (matchedListingIds.contains(other.getId())) continue;
 
-                // Hard Filter: Listing type opposite hona chahiye (WASTE <-> REQUIREMENT)
                 boolean isComplementary = !mine.getListingType().equalsIgnoreCase(other.getListingType());
-
-                // Hard Filter: Category match honi chahiye (case-insensitive)
                 boolean isCategoryMatch = mine.getCategory().trim().equalsIgnoreCase(other.getCategory().trim());
 
                 if (isComplementary && isCategoryMatch) {
-                    // Distance calculate karo (agar location available hai)
-                    double distance = calculateApproxDistance(sourceCompany, other.getCompany());
+                    // 🔒 FIX: If target company has no location, do not invent a fake distance
+                    if (other.getCompany().getLocation() == null) {
+                        continue;
+                    }
+
+                    double distance = calculateHaversineDistance(sourceCompany, other.getCompany());
 
                     if (distance <= radiusKm) {
                         MatchResponse match = new MatchResponse();
-                        match.setMatchedCompany(other.getCompany());
+
+                        // 🔒 SECURE: Redact sensitive company details before sending MatchResponse
+                        Company safeTargetCompany = other.getCompany();
+                        safeTargetCompany.setPassword(null);
+                        safeTargetCompany.setApiKey(null);
+
+                        match.setMatchedCompany(safeTargetCompany);
                         match.setMatchedResourceId(other.getId());
                         match.setMatchedResourceType(other.getListingType());
                         match.setMatchedCategory(other.getCategory());
                         match.setMatchedQuantity(other.getQuantityInTons());
                         match.setDistanceKm(distance);
 
-                        // Scoring logic (Quantity fit aur distance ke aadhar par)
                         int score = calculateMatchScore(mine.getQuantityInTons(), other.getQuantityInTons(), distance, radiusKm);
                         match.setMatchScore(score);
 
                         matches.add(match);
+                        matchedListingIds.add(other.getId());
                     }
                 }
             }
         }
-
         return matches;
     }
 
-    private double calculateApproxDistance(Company c1, Company c2) {
-        if (c1.getLocation() == null || c2.getLocation() == null) {
-            return 10.0; // Default fallback distance agar coordinates missing ho
-        }
-        // JTS Point se coordinates nikal kar Haversine formula ya simple euclidean distance
+    private double calculateHaversineDistance(Company c1, Company c2) {
         double lat1 = c1.getLocation().getY();
         double lon1 = c1.getLocation().getX();
         double lat2 = c2.getLocation().getY();
         double lon2 = c2.getLocation().getX();
 
-        // Simple approximate distance calculation in KM
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
                 Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
                         Math.sin(dLon / 2) * Math.sin(dLon / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return 6371 * c; // Earth radius in KM
+        return 6371 * c;
     }
 
     private int calculateMatchScore(double myQty, double theirQty, double distance, double maxRadius) {
         double qtyDiffRatio = Math.abs(myQty - theirQty) / Math.max(myQty, theirQty);
-        int qtyScore = (int)((1.0 - qtyDiffRatio) * 50); // Max 50 points for quantity fit
+        int qtyScore = (int)((1.0 - qtyDiffRatio) * 50);
 
-        int distScore = (int)((1.0 - (distance / maxRadius)) * 50); // Max 50 points for distance proximity
+        // Safely avoid division by zero if maxRadius is 0
+        double distRatio = (maxRadius > 0) ? (distance / maxRadius) : 1.0;
+        int distScore = (int)((1.0 - distRatio) * 50);
 
-        int totalScore = Math.max(20, Math.min(100, qtyScore + distScore));
-        return totalScore;
+        return Math.max(20, Math.min(100, qtyScore + distScore));
     }
 }

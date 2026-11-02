@@ -6,7 +6,10 @@ import com.renode.service.AuthServiceMailExtension;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.renode.entity.Company;
@@ -19,6 +22,7 @@ import com.renode.service.CompanyService;
 import com.renode.service.MatchmakingService;
 import com.renode.repository.ResourceListingRepository;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -57,37 +61,46 @@ public class CompanyController {
     @Autowired
     private AuthServiceMailExtension authServiceMailExtension;
 
+    // Helper: Securely get authenticated company
+    private Company getAuthenticatedCompany() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return companyRepository.findByContactEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated"));
+    }
+
+    // --- SECURE: Check Ownership Helper ---
+    private void verifyOwnership(Integer requestedId) {
+        Company authCompany = getAuthenticatedCompany();
+        if (!authCompany.getId().equals(requestedId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized action on another company's resource.");
+        }
+    }
+
     @GetMapping("/content/terms")
     public ResponseEntity<?> getTermsContent() {
         TermsContent terms = termsRepository.findTopByOrderByIdDesc();
         if (terms == null) {
             TermsContent defaultTerms = new TermsContent();
             defaultTerms.setTitle("Terms & Conditions");
-            defaultTerms.setContent("Welcome to ReNode. By using our B2B industrial waste exchange platform, you agree to comply with environmental and trade regulations.");
+            defaultTerms.setContent("Welcome to ReNode. By using our platform, you agree to comply with environmental regulations.");
             return ResponseEntity.ok(defaultTerms);
         }
         return ResponseEntity.ok(terms);
     }
 
-    // --- UPDATE TERMS & CONDITIONS API ---
+    // 🔒 SECURE: Only authorized administrators can update global terms
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @PutMapping("/content/terms")
     public ResponseEntity<?> updateTermsContent(@RequestBody TermsContent newTerms) {
         try {
             TermsContent terms = termsRepository.findTopByOrderByIdDesc();
-            if (terms == null) {
-                terms = new TermsContent();
-            }
+            if (terms == null) terms = new TermsContent();
             terms.setTitle(newTerms.getTitle());
             terms.setContent(newTerms.getContent());
             termsRepository.save(terms);
-
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Terms & Conditions updated successfully!");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(Map.of("message", "Terms & Conditions updated successfully!"));
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Error saving terms: " + e.getMessage());
-            return ResponseEntity.status(400).body(error);
+            return ResponseEntity.status(400).body(Map.of("error", "Error saving terms: " + e.getMessage()));
         }
     }
 
@@ -106,59 +119,64 @@ public class CompanyController {
         return matchmakingService.findMatchesForCompany(id, radius);
     }
 
-    // Fetch specific company profile for Settings Tab
+    // 🔒 SECURE: Prevent data leakage of sensitive integrations/keys
     @GetMapping("/{id}")
     public ResponseEntity<?> getCompanyProfile(@PathVariable Integer id) {
         Company company = companyRepository.findById(id).orElse(null);
         if (company == null) {
             return ResponseEntity.status(404).body("Company not found!");
         }
-        company.setPassword(null); // Protect password
+
+        company.setPassword(null); // Always protect password
+
+        // If a company is looking at ANOTHER company's profile, hide integration secrets
+        Company authCompany = getAuthenticatedCompany();
+        if (!authCompany.getId().equals(id)) {
+            company.setApiKey(null);
+            company.setWebhookUrl(null);
+            company.setIntegrationProvider(null);
+        }
         return ResponseEntity.ok(company);
     }
 
     @PostMapping("/{id}/resources")
     public ResourceListing addResource(@PathVariable Integer id, @RequestBody ResourceListing newResource) {
-        Company company = companyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Company not found"));
-
+        verifyOwnership(id); // 🔒 SECURE
+        Company company = companyRepository.findById(id).orElseThrow(() -> new RuntimeException("Company not found"));
         newResource.setCompany(company);
         return resourceListingRepository.save(newResource);
     }
 
-    // --- EDIT RESOURCE LISTING ---
     @PutMapping("/{companyId}/resources/{resourceId}")
     public ResponseEntity<?> editResource(@PathVariable Integer companyId, @PathVariable Integer resourceId, @RequestBody ResourceListing updates) {
+        verifyOwnership(companyId); // 🔒 SECURE
         try {
             ResourceListing existing = resourceListingRepository.findById(resourceId)
                     .orElseThrow(() -> new RuntimeException("Resource not found"));
 
+            if (!existing.getCompany().getId().equals(companyId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Resource does not belong to you"));
+            }
+
             if (updates.getCategory() != null) existing.setCategory(updates.getCategory());
             if (updates.getQuantityInTons() != null) existing.setQuantityInTons(updates.getQuantityInTons());
             if (updates.getDescription() != null) existing.setDescription(updates.getDescription());
-
             if (updates.getTargetPrice() != null) existing.setTargetPrice(updates.getTargetPrice());
             if (updates.getPuritySpecifications() != null) existing.setPuritySpecifications(updates.getPuritySpecifications());
             if (updates.getExpiryDate() != null) existing.setExpiryDate(updates.getExpiryDate());
 
             resourceListingRepository.save(existing);
-
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Listing updated successfully with advanced specs!");
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(Map.of("message", "Listing updated successfully!"));
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Could not update resource: " + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(Map.of("error", "Could not update resource: " + e.getMessage()));
         }
     }
 
-    // --- REGISTER NEW FACTORY ---
     @PostMapping("/register")
     public ResponseEntity<?> registerFactory(@RequestBody Map<String, Object> payload) {
+        // ... (Keep existing implementation, logic here is public anyway)
         try {
             Company company = new Company();
-
             if (payload.get("companyName") != null) company.setCompanyName(String.valueOf(payload.get("companyName")));
             if (payload.get("industryType") != null) company.setIndustryType(String.valueOf(payload.get("industryType")));
             if (payload.get("contactEmail") != null) company.setContactEmail(String.valueOf(payload.get("contactEmail")));
@@ -167,7 +185,6 @@ public class CompanyController {
                 company.setPassword(passwordEncoder.encode(String.valueOf(payload.get("password"))));
             }
 
-            // Set Defaults for settings module
             company.setDefaultSearchRadius(50);
             company.setPreferredUnit("Metric Tons (t)");
             company.setVerificationStatus("PENDING");
@@ -175,80 +192,56 @@ public class CompanyController {
             if (payload.get("latitude") != null && payload.get("longitude") != null) {
                 double lat = Double.parseDouble(String.valueOf(payload.get("latitude")));
                 double lon = Double.parseDouble(String.valueOf(payload.get("longitude")));
-
-                org.locationtech.jts.geom.GeometryFactory geometryFactory = new org.locationtech.jts.geom.GeometryFactory();
-                org.locationtech.jts.geom.Point location = geometryFactory.createPoint(new org.locationtech.jts.geom.Coordinate(lon, lat));
+                GeometryFactory geometryFactory = new GeometryFactory();
+                Point location = geometryFactory.createPoint(new Coordinate(lon, lat));
                 location.setSRID(4326);
                 company.setLocation(location);
             }
 
             companyRepository.save(company);
-
-            // Queue verification email upon successful registration
             try {
                 authServiceMailExtension.sendRegistrationVerificationEmail(company);
             } catch (Exception mailEx) {
-                // Log mail exception but don't fail registration
                 System.err.println("Failed to queue verification email: " + mailEx.getMessage());
             }
 
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Factory Registered Successfully! Verification email queued.");
-            return ResponseEntity.ok(response);
-
+            return ResponseEntity.ok(Map.of("message", "Factory Registered Successfully!"));
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Email already exists! Please use a different email or login.");
-            return ResponseEntity.status(400).body(error);
+            return ResponseEntity.status(400).body(Map.of("error", "Email already exists! Please use a different email or login."));
         } catch (Exception e) {
-            e.printStackTrace();
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Server Error: " + e.getMessage());
-            return ResponseEntity.status(400).body(error);
+            return ResponseEntity.status(400).body(Map.of("error", "Server Error: " + e.getMessage()));
         }
     }
 
-    // --- FORGOT PASSWORD ENDPOINT ---
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         Optional<Company> companyOpt = companyRepository.findByContactEmail(email);
-
         if (companyOpt.isPresent()) {
             authServiceMailExtension.sendPasswordResetEmail(companyOpt.get());
         }
-
-        // Secure generic response to prevent user enumeration
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "If an account with that email exists, a password reset link has been sent.");
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of("message", "If an account with that email exists, a password reset link has been sent."));
     }
 
-    // --- LOGIN ENDPOINT ---
     @PostMapping("/login")
     public ResponseEntity<?> loginFactory(@RequestBody Map<String, String> credentials) {
         String email = credentials.get("email");
         String password = credentials.get("password");
 
         Company company = companyRepository.findByContactEmail(email).orElse(null);
-        if (company == null) {
-            return ResponseEntity.status(401).body("Company not found with this email!");
+        if (company == null || !passwordEncoder.matches(password, company.getPassword())) {
+            return ResponseEntity.status(401).body(Map.of("error", "Invalid Credentials"));
         }
 
-        if (passwordEncoder.matches(password, company.getPassword())) {
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
-            String token = jwtUtil.generateToken(userDetails.getUsername());
+        UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+        String token = jwtUtil.generateToken(userDetails.getUsername());
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "Login Successful!");
-            response.put("companyId", company.getId());
-            response.put("companyName", company.getCompanyName());
-            response.put("token", token);
-
-            return ResponseEntity.ok(response);
-        } else {
-            return ResponseEntity.status(401).body("Invalid Password!");
-        }
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Login Successful!");
+        response.put("companyId", company.getId());
+        response.put("companyName", company.getCompanyName());
+        response.put("token", token);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/stats")
@@ -265,140 +258,99 @@ public class CompanyController {
             }
         }
         stats.put("totalWasteTons", totalWasteTons);
-
         return stats;
     }
 
     @DeleteMapping("/{companyId}/resources/{resourceId}")
     public ResponseEntity<?> deleteResource(@PathVariable Integer companyId, @PathVariable Integer resourceId) {
+        verifyOwnership(companyId); // 🔒 SECURE
         try {
+            ResourceListing existing = resourceListingRepository.findById(resourceId).orElseThrow(() -> new RuntimeException("Not found"));
+            if(!existing.getCompany().getId().equals(companyId)) throw new Exception("Not your resource");
+
             resourceListingRepository.deleteById(resourceId);
-            return ResponseEntity.ok().body("{\"message\": \"Resource deleted successfully\"}");
+            return ResponseEntity.ok().body(Map.of("message", "Resource deleted successfully"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("{\"error\": \"Could not delete resource\"}");
+            return ResponseEntity.badRequest().body(Map.of("error", "Could not delete resource"));
         }
     }
 
-    // --- UPDATE COMPANY PROFILE (SETTINGS MODULE) ---
     @PutMapping("/{id}")
     public ResponseEntity<?> updateCompanyProfile(@PathVariable Integer id, @RequestBody Map<String, String> updates) {
+        verifyOwnership(id); // 🔒 SECURE
         Company company = companyRepository.findById(id).orElse(null);
-        if (company == null) {
-            return ResponseEntity.status(404).body("Company not found!");
-        }
+        if (company == null) return ResponseEntity.status(404).body("Company not found!");
 
         if (updates.containsKey("companyName")) company.setCompanyName(updates.get("companyName"));
         if (updates.containsKey("industryType")) company.setIndustryType(updates.get("industryType"));
         if (updates.containsKey("description")) company.setDescription(updates.get("description"));
         if (updates.containsKey("website")) company.setWebsite(updates.get("website"));
         if (updates.containsKey("taxId")) company.setTaxId(updates.get("taxId"));
-
-        if (updates.containsKey("defaultSearchRadius")) {
-            company.setDefaultSearchRadius(Integer.parseInt(updates.get("defaultSearchRadius")));
-        }
-        if (updates.containsKey("preferredUnit")) {
-            company.setPreferredUnit(updates.get("preferredUnit"));
-        }
+        if (updates.containsKey("defaultSearchRadius")) company.setDefaultSearchRadius(Integer.parseInt(updates.get("defaultSearchRadius")));
+        if (updates.containsKey("preferredUnit")) company.setPreferredUnit(updates.get("preferredUnit"));
 
         if (updates.containsKey("latitude") && updates.containsKey("longitude")) {
             double lat = Double.parseDouble(updates.get("latitude"));
             double lon = Double.parseDouble(updates.get("longitude"));
-
             GeometryFactory geometryFactory = new GeometryFactory();
             Point newLocation = geometryFactory.createPoint(new Coordinate(lon, lat));
             newLocation.setSRID(4326);
-
             company.setLocation(newLocation);
         }
 
         companyRepository.save(company);
-
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Company Profile updated successfully!");
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of("message", "Company Profile updated successfully!"));
     }
 
-    // --- UPDATE PASSWORD (SECURITY TAB) ---
     @PutMapping("/{id}/password")
     public ResponseEntity<?> updatePassword(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
+        verifyOwnership(id); // 🔒 SECURE
         try {
             Company company = companyRepository.findById(id).orElse(null);
-            if (company == null) {
-                return ResponseEntity.status(404).body("Company not found!");
-            }
-
             String currentPassword = payload.get("currentPassword");
             String newPassword = payload.get("newPassword");
 
             if (!passwordEncoder.matches(currentPassword, company.getPassword())) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "Incorrect current password");
-                return ResponseEntity.status(401).body(error);
+                return ResponseEntity.status(401).body(Map.of("error", "Incorrect current password"));
             }
 
             company.setPassword(passwordEncoder.encode(newPassword));
             companyRepository.save(company);
-
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Password updated successfully!");
-            return ResponseEntity.ok(response);
-
+            return ResponseEntity.ok(Map.of("message", "Password updated successfully!"));
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Server Error: " + e.getMessage());
-            return ResponseEntity.status(500).body(error);
+            return ResponseEntity.status(500).body(Map.of("error", "Server Error: " + e.getMessage()));
         }
     }
 
-    // --- COMPLIANCE DOCUMENT UPLOAD API ---
     @PostMapping("/{id}/upload-document")
-    public ResponseEntity<?> uploadComplianceDocument(
-            @PathVariable Integer id,
-            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+    public ResponseEntity<?> uploadComplianceDocument(@PathVariable Integer id, @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        verifyOwnership(id); // 🔒 SECURE
         try {
             Company company = companyRepository.findById(id).orElse(null);
-            if (company == null) {
-                return ResponseEntity.status(404).body("Company not found!");
-            }
-
             company.setVerificationStatus("DOCUMENT_UNDER_REVIEW");
             companyRepository.save(company);
-
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Document '" + file.getOriginalFilename() + "' uploaded successfully! Verification pending.");
-            return ResponseEntity.ok(response);
-
+            return ResponseEntity.ok(Map.of("message", "Document '" + file.getOriginalFilename() + "' uploaded successfully! Verification pending."));
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to upload document: " + e.getMessage());
-            return ResponseEntity.status(500).body(error);
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to upload document"));
         }
     }
 
-    // --- NOTIFICATION PREFERENCES API ---
     @PutMapping("/{id}/notifications")
     public ResponseEntity<?> updateNotifications(@PathVariable Integer id, @RequestBody Map<String, Boolean> prefs) {
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Notification preferences saved securely.");
-        return ResponseEntity.ok(response);
+        verifyOwnership(id); // 🔒 SECURE
+        return ResponseEntity.ok(Map.of("message", "Notification preferences saved securely."));
     }
 
-    // --- SAVE INTEGRATION DETAILS ---
     @PutMapping("/{id}/integrations")
     public ResponseEntity<?> saveIntegrations(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
+        verifyOwnership(id); // 🔒 SECURE
         Company company = companyRepository.findById(id).orElse(null);
-        if (company == null) {
-            return ResponseEntity.status(404).body("Company not found!");
-        }
 
         if (payload.containsKey("integrationProvider")) company.setIntegrationProvider(payload.get("integrationProvider"));
         if (payload.containsKey("apiKey")) company.setApiKey(payload.get("apiKey"));
         if (payload.containsKey("webhookUrl")) company.setWebhookUrl(payload.get("webhookUrl"));
 
         companyRepository.save(company);
-
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Integration settings saved successfully!");
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of("message", "Integration settings saved successfully!"));
     }
 }

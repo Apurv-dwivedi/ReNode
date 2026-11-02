@@ -19,7 +19,6 @@
         .input-group input { width: 100%; padding: 10px 14px; background-color: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white; font-size: 14px; transition: 0.2s; }
         .input-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
 
-        /* 🌟 NEW: Autocomplete Dropdown Styles */
         .suggestions-box { position: absolute; top: 100%; left: 0; right: 0; background: #1e293b; border: 1px solid #334155; border-radius: 8px; margin-top: 5px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         .suggestion-item { padding: 10px 14px; font-size: 13px; color: #cbd5e1; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 8px; }
         .suggestion-item:last-child { border-bottom: none; }
@@ -65,7 +64,6 @@
             <input type="password" id="regPassword" placeholder="••••••••" required>
         </div>
 
-        <!-- Smart Location Input with Dropdown -->
         <div class="input-group">
             <label>Factory Location</label>
             <input type="text" id="regLocation" placeholder="Start typing your city..." autocomplete="off" required>
@@ -73,7 +71,6 @@
             <small style="color: #64748b; font-size: 11px; margin-top: 4px; display: block;">Select a location from the dropdown suggestions.</small>
         </div>
 
-        <!-- Hidden inputs to store exact coordinates -->
         <input type="hidden" id="finalLat" value="">
         <input type="hidden" id="finalLon" value="">
 
@@ -88,6 +85,11 @@
 <div id="toast"><span id="toast-msg">Notification</span></div>
 
 <script>
+    // 🌟 NEW: Dynamic Environment Configuration
+    const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:8080'
+        : 'https://renode-1lbs.onrender.com';
+
     function showToast(message, type) {
         const toast = document.getElementById('toast');
         document.getElementById('toast-msg').innerText = message;
@@ -95,7 +97,7 @@
         setTimeout(() => { toast.classList.remove('show'); }, 4000);
     }
 
-    // 🌟 LIVE GOOGLE-MAPS STYLE AUTOCOMPLETE LOGIC
+    // LIVE GOOGLE-MAPS STYLE AUTOCOMPLETE LOGIC (Using Nominatim)
     const locationInput = document.getElementById('regLocation');
     const suggestionsBox = document.getElementById('suggestionsBox');
     let typingTimer;
@@ -104,13 +106,11 @@
         clearTimeout(typingTimer);
         const query = this.value.trim();
 
-        // Agar input khali hai, box chupa do
         if(query.length < 3) {
             suggestionsBox.style.display = 'none';
             return;
         }
 
-        // User ke type karna band karne ke 500ms baad API call karo
         typingTimer = setTimeout(async () => {
             try {
                 const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
@@ -121,11 +121,9 @@
                     data.forEach(place => {
                         const div = document.createElement('div');
                         div.className = 'suggestion-item';
-                        // Simplify the display name (first 2-3 commas max)
                         const simpleName = place.display_name.split(',').slice(0, 3).join(',');
                         div.innerHTML = `<i class="ph ph-map-pin"></i> ${simpleName}`;
 
-                        // Jab user suggestion par click kare
                         div.onclick = function() {
                             locationInput.value = simpleName;
                             document.getElementById('finalLat').value = place.lat;
@@ -145,21 +143,19 @@
         }, 500);
     });
 
-    // Click outside to close suggestions
     document.addEventListener('click', function(e) {
         if(e.target !== locationInput && e.target !== suggestionsBox) {
             suggestionsBox.style.display = 'none';
         }
     });
 
-    // 🌟 SUBMIT LOGIC
+    // SUBMIT LOGIC
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
         let lat = document.getElementById('finalLat').value;
         let lon = document.getElementById('finalLon').value;
 
-        // Agar user ne bina suggestion select kiye form submit kar diya
         if (!lat || !lon) {
             showToast("Please select a valid location from the dropdown suggestions!", "error");
             return;
@@ -179,7 +175,8 @@
                 longitude: lon
             };
 
-            const response = await fetch('https://renode-1lbs.onrender.com/api/companies/register', {                method: 'POST',
+            const response = await fetch(`${API_BASE_URL}/api/companies/register`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class CompanyService {
@@ -17,10 +18,22 @@ public class CompanyService {
         Company currentFactory = companyRepository.findById(factoryId)
                 .orElseThrow(() -> new RuntimeException("Factory not found with ID: " + factoryId));
 
-        // Point object se exact coordinates nikal lo
+        // 🔒 FIX: Gracefully handle companies without established coordinates
+        if (currentFactory.getLocation() == null) {
+            throw new IllegalStateException("Company location coordinates are not set. Cannot determine nearby factories.");
+        }
+
         double lon = currentFactory.getLocation().getX();
         double lat = currentFactory.getLocation().getY();
 
-        return companyRepository.findNearbyFactories(lon, lat, radiusInKm);
+        List<Company> nearby = companyRepository.findNearbyFactories(lon, lat, radiusInKm);
+
+        // 🔒 SECURE: Strip out sensitive data from neighboring companies before sending to frontend map
+        return nearby.stream().map(company -> {
+            company.setPassword(null);
+            company.setApiKey(null);
+            company.setWebhookUrl(null);
+            return company;
+        }).collect(Collectors.toList());
     }
 }

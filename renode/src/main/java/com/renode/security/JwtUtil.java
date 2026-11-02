@@ -1,10 +1,11 @@
-package com.renode.security; // Apne project ka actual package name yahan daal lena
+package com.renode.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -17,9 +18,11 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    // Yeh secret key hai (Isko application.properties me bhi rakh sakte ho baad me)
-    // Yeh kam se kam 256-bit (32 characters) lamba hona chahiye
-    private static final String SECRET = "ReNodeB2BSaaSPlatformSecretKeyForJWTAuthentication2026";
+    @Value("${jwt.secret}")
+    private String secret;
+
+    @Value("${jwt.expirationMs}")
+    private long jwtExpirationMs;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -61,13 +64,13 @@ public class JwtUtil {
                 .setClaims(claims)
                 .setSubject(userName)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 24 Ghante ki validity
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
     private Key getSignKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(java.util.Base64.getEncoder().encodeToString(SECRET.getBytes()));
+        byte[] keyBytes = Decoders.BASE64.decode(secret);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

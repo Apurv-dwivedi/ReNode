@@ -1,3 +1,8 @@
+// 🌟 NEW: Dynamic Environment Configuration
+const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8080'
+    : 'https://renode-1lbs.onrender.com';
+
 // 1. Initialize Map
 const map = L.map('map', { zoomControl: false }).setView([29.8688, 77.8880], 9);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -44,17 +49,18 @@ async function fetchData(radius) {
     }
 
     try {
-        const nearbyRes = await fetch(`http://localhost:8080/api/companies/${MY_COMPANY_ID}/nearby?radius=${radius}`, {
+        const nearbyRes = await fetch(`${API_BASE_URL}/api/companies/${MY_COMPANY_ID}/nearby?radius=${radius}`, {
             headers: { 'Authorization': `Bearer ${JWT_TOKEN}` }
         });
 
-        const matchRes = await fetch(`http://localhost:8080/api/companies/${MY_COMPANY_ID}/matches?radius=${radius}`, {
+        const matchRes = await fetch(`${API_BASE_URL}/api/companies/${MY_COMPANY_ID}/matches?radius=${radius}`, {
             headers: { 'Authorization': `Bearer ${JWT_TOKEN}` }
         });
 
         if (!nearbyRes.ok || !matchRes.ok) {
             console.error("Session expired or unauthorized.");
             document.getElementById('results').innerHTML = `<p style="color: #ef4444; padding: 10px;">Session expired. Please <a href="login.html" style="color: #38bdf8;">Login again</a>.</p>`;
+            localStorage.removeItem('jwt_token');
             return;
         }
 
@@ -62,7 +68,10 @@ async function fetchData(radius) {
         const matchData = await matchRes.json();
 
         updateUI(nearbyData, matchData, radius);
-    } catch (error) { console.error("Error fetching data", error); }
+    } catch (error) {
+        console.error("Error fetching data", error);
+        document.getElementById('results').innerHTML = `<p style="color: #ef4444; padding: 10px;">Network error connecting to server.</p>`;
+    }
 }
 
 async function updateUI(companies, matches, radiusInKm) {
@@ -94,8 +103,8 @@ async function updateUI(companies, matches, radiusInKm) {
     resultsContainer.innerHTML += `<h4 style="color: #10b981; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">📍 Network</h4>`;
 
     for (const company of companies) {
-        let lat = company.latitude;
-        let lon = company.longitude;
+        let lat = company.location?.y || company.latitude;
+        let lon = company.location?.x || company.longitude;
 
         if (!lat || !lon) {
             if (company.companyName.includes("Roorkee")) { lat = 29.8700; lon = 77.8900; }
@@ -107,7 +116,7 @@ async function updateUI(companies, matches, radiusInKm) {
             }
         }
 
-        let isMatch = matches.find(m => m.matchedCompany && m.matchedCompany.companyName === company.companyName);
+        let isMatch = matches.find(m => m.matchedCompany && (m.matchedCompany.companyName === company.companyName || m.matchedCompany.id === company.id));
 
         if (isMatch && lat && lon) {
             L.polyline([[myLat, myLon], [lat, lon]], {
@@ -120,23 +129,25 @@ async function updateUI(companies, matches, radiusInKm) {
 
         let resourcesHTML = '<div style="margin-top: 10px; font-size: 12px; display: flex; flex-direction: column; gap: 4px;">';
         try {
-            const resResponse = await fetch(`http://localhost:8080/api/companies/${company.id}/resources`, {
+            const resResponse = await fetch(`${API_BASE_URL}/api/companies/${company.id}/resources`, {
                 headers: { 'Authorization': `Bearer ${JWT_TOKEN}` }
             });
-            const resources = await resResponse.json();
-            if(resources.length === 0) {
-                resourcesHTML += '<span style="color: #64748b; font-style: italic;">No resources listed.</span>';
-            } else {
-                resources.forEach(res => {
-                    const borderColor = res.listingType === 'WASTE' ? '#ef4444' : '#3b82f6';
-                    const icon = res.listingType === 'WASTE' ? '🗑️' : '📦';
-                    resourcesHTML += `
-                        <div style="background: rgba(255,255,255,0.05); padding: 6px; border-radius: 4px; border-left: 2px solid ${borderColor};">
-                            <strong style="color: ${borderColor};">${icon} ${res.listingType}:</strong> 
-                            ${res.category} <span style="color: #94a3b8;">(${res.quantityInTons}t)</span>
-                        </div>
-                    `;
-                });
+            if (resResponse.ok) {
+                const resources = await resResponse.json();
+                if(resources.length === 0) {
+                    resourcesHTML += '<span style="color: #64748b; font-style: italic;">No resources listed.</span>';
+                } else {
+                    resources.forEach(res => {
+                        const borderColor = res.listingType === 'WASTE' ? '#ef4444' : '#3b82f6';
+                        const icon = res.listingType === 'WASTE' ? '🗑️' : '📦';
+                        resourcesHTML += `
+                            <div style="background: rgba(255,255,255,0.05); padding: 6px; border-radius: 4px; border-left: 2px solid ${borderColor};">
+                                <strong style="color: ${borderColor};">${icon} ${res.listingType}:</strong> 
+                                ${res.category} <span style="color: #94a3b8;">(${res.quantityInTons}t)</span>
+                            </div>
+                        `;
+                    });
+                }
             }
         } catch (err) { }
         resourcesHTML += '</div>';
@@ -172,7 +183,7 @@ fetchData(85);
 
 async function loadPlatformStats() {
     try {
-        const response = await fetch('http://localhost:8080/api/companies/stats');
+        const response = await fetch(`${API_BASE_URL}/api/companies/stats`);
         if (response.ok) {
             const stats = await response.json();
             const fStat = document.getElementById('stat-factories');
@@ -235,7 +246,7 @@ if(registerForm) {
         };
 
         try {
-            const response = await fetch('http://localhost:8080/api/companies/register', {
+            const response = await fetch(`${API_BASE_URL}/api/companies/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
