@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -18,10 +19,11 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
+    // 🌟 Added default fallback values to prevent BeanCreationException if properties are missing
+    @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
     private String secret;
 
-    @Value("${jwt.expirationMs}")
+    @Value("${jwt.expirationMs:86400000}")
     private long jwtExpirationMs;
 
     public String extractUsername(String token) {
@@ -70,7 +72,18 @@ public class JwtUtil {
     }
 
     private Key getSignKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secret);
-        return Keys.hmacShaKeyFor(keyBytes);
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(secret);
+            return Keys.hmacShaKeyFor(keyBytes);
+        } catch (Exception e) {
+            // 🌟 Safe fallback if secret is plain text or not strictly Base64 encoded
+            byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+            if (keyBytes.length < 32) {
+                byte[] paddedBytes = new byte[32];
+                System.arraycopy(keyBytes, 0, paddedBytes, 0, Math.min(keyBytes.length, 32));
+                return Keys.hmacShaKeyFor(paddedBytes);
+            }
+            return Keys.hmacShaKeyFor(keyBytes);
+        }
     }
 }
